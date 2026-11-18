@@ -47,5 +47,7 @@ uv run pytest -q
 uv run ruff check .
 ```
 
-Status: Fase 1 concluída em 2026-11-17. As atualizações listadas são
-executadas dentro da fase correspondente, não antecipadas.
+Status: Fase 1 concluída em 2026-11-17. Fase 4 executada em 2026-11-17:
+`google-cloud-storage` adicionado, `GCS_BUCKET_NAME` passou a ser lida e
+os testes com mocks de upload/precondição foram incluídos. As demais
+atualizações listadas são executadas dentro da fase correspondente.

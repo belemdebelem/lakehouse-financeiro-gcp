@@ -91,6 +91,21 @@ origem:
 | `record_checksum` | STRING | Opcional; SHA-256 da linha canônica quando necessário à deduplicação. |
 | `pipeline_version` | STRING | Opcional; versão do código (ex.: git SHA) que produziu o lote. |
 
+## Caminho e metadados no GCS (Fase 4)
+
+Os CSVs sintéticos são enviados para:
+
+`landing/<entidade>/ingestion_date=YYYY-MM-DD/<arquivo>`
+
+Cada objeto recebe `batch_id`, `sha256`, `source_file` com o caminho do
+próprio objeto, `ingestion_date`, `ingested_at` em UTC e `row_count`. O
+`batch_id` é estável por entidade e checksum, conforme a tabela acima.
+
+A precondição `if_generation_match=0` impede substituição silenciosa. Um
+reenvio idêntico falha com `ObjectAlreadyExistsError` e o objeto original
+permanece intacto; a data de ingestão faz parte do caminho, não do
+conteúdo do arquivo.
+
 ## Mapeamento para dbt
 
 | Bronze (source) | Modelo Silver | Uso principal |

@@ -666,7 +666,7 @@ Tarefas:
 **Nunca executar `terraform apply` ou destruir recursos sem autorização
 do usuário.** A autorização desta execução foi registrada acima.
 
-### Fase 4 --- Ingestão Python para GCS
+### Fase 4 --- Ingestão Python para GCS (concluída)
 
 **Objetivo:** implementar a entrada batch dos arquivos.
 
@@ -704,6 +704,20 @@ operações do bucket.
 -   Reexecução não sobrescreve silenciosamente dados originais.
 -   Logs identificam lote e arquivo.
 -   Testes automatizados aprovados.
+
+**Resultado da execução (2026-11-17):**
+
+-   `google-cloud-storage` adicionado e `GCS_BUCKET_NAME` passou a ser
+    lida por `Settings`.
+-   Três objetos enviados para
+    `landing/<entidade>/ingestion_date=2026-11-17/` com checksum SHA-256,
+    `batch_id`, `source_file`, `ingested_at` e `row_count` nos metadados.
+-   Reexecução controlada da mesma data falhou por precondição e não
+    alterou o objeto original.
+-   Logs incluem `pipeline_name`, `stage`, `status`, `batch_id`,
+    `source_file`, `object_path`, `sha256` e contagens.
+-   Testes: 19 passaram e 1 teste de integração opt-in passou contra o
+    bucket real.
 
 **Parar e pedir aprovação.**
 

@@ -8,7 +8,9 @@ version = "0.1.0"
 description = "Lakehouse financeiro sintético em GCP (portfólio)"
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "google-cloud-storage>=3.17.1",
+]
 
 [project.optional-dependencies]
 dev = [
@@ -22,6 +24,9 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+markers = [
+  "integration: acessa GCS real e é executado apenas com RUN_GCS_INTEGRATION=1",
+]
 
 [tool.ruff]
 line-length = 100

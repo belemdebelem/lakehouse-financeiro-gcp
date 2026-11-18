@@ -1,4 +1,4 @@
-"""Configurações mínimas do projeto (Fase 1)."""
+"""Configurações mínimas do projeto (Fases 1 e 4)."""
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ class Settings:
     project_id: str
     region: str
     location: str
+    gcs_bucket_name: str
     pipeline_name: str
     log_level: str
 
@@ -20,6 +21,7 @@ class Settings:
             project_id=os.getenv("GCP_PROJECT_ID", ""),
             region=os.getenv("GCP_REGION", "southamerica-east1"),
             location=os.getenv("GCP_LOCATION", "southamerica-east1"),
+            gcs_bucket_name=os.getenv("GCS_BUCKET_NAME", ""),
             pipeline_name=os.getenv("PIPELINE_NAME", "lakehouse-financeiro"),
             log_level=os.getenv("LOG_LEVEL", "INFO"),
         )

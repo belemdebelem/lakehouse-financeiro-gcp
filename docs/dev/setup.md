@@ -1,4 +1,4 @@
-# Setup e execução local (Fases 1 e 2 — concluídas)
+# Setup e execução local (Fases 1 a 4 — concluídas)
 
 ## Pré-requisitos
 
@@ -27,11 +27,11 @@ mesmas versões do lockfile.
   `.env` no shell: `set -a; source .env; set +a`.
 - Defaults em `src/lakehouse/config.py`: região e localização
   `southamerica-east1`, `PIPELINE_NAME=lakehouse-financeiro`,
-  `LOG_LEVEL=INFO` e `GCP_PROJECT_ID` vazio.
+  `LOG_LEVEL=INFO`, `GCP_PROJECT_ID` e `GCS_BUCKET_NAME` vazios.
 - Autenticação GCP local: `gcloud auth application-default login`. Não
   usar chaves JSON de service account no repositório.
-- `GCS_BUCKET_NAME` e `BQ_DATASET_*` constam no template, mas ainda não
-  são lidos pelo código; entram nas Fases 4 e 5.
+- `GCS_BUCKET_NAME` é lido pela ingestão da Fase 4; `BQ_DATASET_*` entram
+  na Fase 5.
 
 ## Dados sintéticos (Fase 2)
 
@@ -44,6 +44,28 @@ uv run python -m lakehouse.generation
 O comando usa a seed `20261117`, sobrescreve apenas os três arquivos da
 pasta e não acessa a nuvem. `data/sample/invalid/` contém exemplos
 rejeitados por `validate_dataset`, usados nos testes do esquema.
+
+## Ingestão para GCS (Fase 4)
+
+A dependência oficial `google-cloud-storage` está travada em `uv.lock`.
+Com ADC ativo e `GCS_BUCKET_NAME` definido no ambiente:
+
+```bash
+set -a; source .env; set +a
+uv run python -m lakehouse.ingestion
+```
+
+O comando valida os CSVs versionados, calcula SHA-256, grava metadados no
+objeto e envia cada arquivo para
+`landing/<entidade>/ingestion_date=YYYY-MM-DD/<arquivo>`. A precondição
+`if_generation_match=0` impede sobrescrita silenciosa; arquivos inválidos
+são rejeitados antes de qualquer upload.
+
+O teste de integração controlado é opt-in e idempotente:
+
+```bash
+RUN_GCS_INTEGRATION=1 uv run pytest tests/integration -q
+```
 
 ## Testes e lint
 
@@ -78,5 +100,8 @@ de faturamento são configurados manualmente; veja
   configuração, lint configurado e nenhuma credencial versionada.
 - Fase 2 concluída: gerador determinístico, amostras válidas e inválidas,
   esquema em código e testes de reprodutibilidade.
+- Fase 3 concluída: Terraform mínimo, state local e orçamento revisado.
+- Fase 4 concluída: ingestão validada, checksum, caminho particionado,
+  não sobrescrita e testes com client fake.
 - `docs/dev/fase1-evolucao.md` registra como estes artefatos serão
   atualizados em cada fase seguinte.
