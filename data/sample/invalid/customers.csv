@@ -1,0 +1,4 @@
+customer_id,customer_segment,created_at,updated_at
+C000001,mass,2024-01-01,2024-01-02T00:00:00Z
+C000001,unknown,2024-01-03,2024-01-04T00:00:00Z
+C000002,affluent,2024-02-01,2024-02-02T00:00:00Z

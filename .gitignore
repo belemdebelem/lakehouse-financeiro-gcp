@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.json
+!**/fixtures/**/*.json
+*.pem
+*.key
+*credentials*.json
+*service-account*.json
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Data
+data/generated/
+*.csv
+!data/sample/*.csv
+!data/sample/**/*.csv
+
+# OS/IDE
+.DS_Store
+.idea/
+.vscode/
+*.swp

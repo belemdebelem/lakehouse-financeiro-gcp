@@ -1,0 +1,3 @@
+contract_id,installment_number,due_date,paid_at,amount_due,amount_paid,status,updated_at
+CT000001,1,2024-02-10,,100.00,200.00,open,2024-02-10T00:00:00Z
+CT999999,1,2024-03-10,,100.00,0.00,unknown,2024-03-10T00:00:00Z
