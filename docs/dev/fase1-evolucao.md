@@ -49,5 +49,8 @@ uv run ruff check .
 
 Status: Fase 1 concluída em 2026-11-17. Fase 4 executada em 2026-11-17:
 `google-cloud-storage` adicionado, `GCS_BUCKET_NAME` passou a ser lida e
-os testes com mocks de upload/precondição foram incluídos. As demais
-atualizações listadas são executadas dentro da fase correspondente.
+os testes com mocks de upload/precondição foram incluídos. Fase 5
+executada em 2026-11-17: `google-cloud-bigquery` adicionado, `BQ_DATASET_*`
+passaram a ser lidas, DDL versionado criado e testes com mocks de carga,
+metadados de lote e idempotência incluídos. As demais atualizações
+listadas são executadas dentro da fase correspondente.

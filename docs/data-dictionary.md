@@ -106,6 +106,31 @@ reenvio idêntico falha com `ObjectAlreadyExistsError` e o objeto original
 permanece intacto; a data de ingestão faz parte do caminho, não do
 conteúdo do arquivo.
 
+## Tabelas Bronze e `ops` (Fase 5)
+
+O DDL versionado em `sql/bronze/tables.sql`,
+`sql/bronze/staging_tables.sql` e `sql/ops/ingestion_batches.sql` é a
+única fonte de verdade dos schemas. Datasets, bucket e IAM permanecem no
+Terraform.
+
+- `bronze.customers`, `bronze.contracts` e `bronze.installments` usam as
+  colunas de origem descritas acima mais `batch_id`, `source_file`,
+  `ingested_at` e `ingestion_date`.
+- Chaves de `MERGE`: `customer_id`; `contract_id`; e
+  (`contract_id`, `installment_number`).
+- Tabelas finais são particionadas por `ingestion_date`. Clustering:
+  `customer_segment` em `customers`; `product_type` e `status` em
+  `contracts`; `status` em `installments`.
+- Tabelas `<entidade>_staging` contêm somente as colunas de origem, com
+  schema explícito; cada carga usa `WRITE_TRUNCATE` na staging.
+- `ops.ingestion_batches` registra por lote: `batch_id`, `entity`,
+  `source_file`, `row_count`, `status`, `error`, `started_at`,
+  `finished_at` e `ingestion_date`. Status possíveis: `STARTED`,
+  `SUCCEEDED` e `FAILED`. A chave lógica é (`batch_id`, `entity`).
+
+O lote de `2026-11-17` carregou 10 clientes, 13 contratos e 78 parcelas;
+as três entradas em `ops.ingestion_batches` estão `SUCCEEDED`.
+
 ## Mapeamento para dbt
 
 | Bronze (source) | Modelo Silver | Uso principal |

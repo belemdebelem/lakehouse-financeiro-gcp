@@ -721,7 +721,7 @@ operações do bucket.
 
 **Parar e pedir aprovação.**
 
-### Fase 5 --- Carga GCS para BigQuery Bronze
+### Fase 5 --- Carga GCS para BigQuery Bronze (concluída)
 
 **Objetivo:** carregar os arquivos na camada Bronze.
 
@@ -752,6 +752,28 @@ evitar streaming e consultas exploratórias amplas.
 -   Lotes rastreáveis.
 -   Reexecução do mesmo lote testada.
 -   Falhas não são marcadas como sucesso.
+
+**Resultado da execução (2026-11-17):**
+
+-   `google-cloud-bigquery` adicionado e `BQ_DATASET_BRONZE`,
+    `BQ_DATASET_SILVER`, `BQ_DATASET_GOLD` e `BQ_DATASET_OPS` passaram a
+    ser lidos por `Settings`.
+-   DDL versionado em `sql/bronze/tables.sql`,
+    `sql/bronze/staging_tables.sql` e `sql/ops/ingestion_batches.sql` é a
+    única fonte de verdade dos schemas. Datasets, bucket e IAM continuam
+    sob responsabilidade do Terraform.
+-   Carga implementada: GCS → tabela de staging com schema explícito,
+    `WRITE_TRUNCATE` e `max_bad_records=0`; depois `MERGE` nas tabelas
+    finais pelas chaves de negócio, com `batch_id`, `source_file`,
+    `ingested_at` e `ingestion_date`.
+-   Lote de `2026-11-17` carregado e conferido no BigQuery: `customers`
+    (10 linhas), `contracts` (13) e `installments` (78). Todos os lotes
+    estão `SUCCEEDED` em `ops.ingestion_batches`.
+-   Reexecução do mesmo lote reconheceu o status `SUCCEEDED` e não criou
+    duplicatas. Falha sintética em teste unitário marca o lote como
+    `FAILED` sem registrar sucesso.
+-   Testes: 24 passaram e 2 integrações opt-in ficaram disponíveis; a
+    integração real contra o BigQuery passou.
 
 **Parar e pedir aprovação.**
 

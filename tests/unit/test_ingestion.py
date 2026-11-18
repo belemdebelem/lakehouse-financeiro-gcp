@@ -80,6 +80,10 @@ def make_settings(bucket_name: str = "bucket-teste") -> Settings:
         region="southamerica-east1",
         location="southamerica-east1",
         gcs_bucket_name=bucket_name,
+        bq_dataset_bronze="bronze",
+        bq_dataset_silver="silver",
+        bq_dataset_gold="gold",
+        bq_dataset_ops="ops",
         pipeline_name="demo",
         log_level="INFO",
     )

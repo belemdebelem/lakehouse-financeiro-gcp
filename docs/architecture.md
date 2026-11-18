@@ -36,13 +36,31 @@ flowchart LR
 | Silver | BigQuery + dbt | Tipos padronizados, deduplicação determinística, validações e dados rejeitados contabilizados. |
 | Gold | BigQuery + dbt | Indicadores pequenos voltados às perguntas analíticas abaixo. |
 | Transformação | dbt-core | Modelos SQL versionados, testes, contratos, docs e lineage. |
-| Operação | BigQuery `ops` | Estado de lote (`STARTED`, `SUCCEEDED`, `FAILED`) e contagens; uma tabela simples quando o pipeline for implementado. |
+| Operação | BigQuery `ops` | Estado de lote (`STARTED`, `SUCCEEDED`, `FAILED`) e contagens em `ops.ingestion_batches`. |
 
 O pipeline Python valida arquivos, calcula checksum e identidade estável
 do lote, envia arquivos ao GCS e dispara cargas batch na Bronze. O
 dbt-core executa as transformações Silver e Gold com modelos
 versionados, testes e lineage. A repetição do mesmo arquivo mantém o
 mesmo `batch_id` e deve ser idempotente.
+
+## Carga Bronze
+
+- Datasets, bucket e IAM são criados pelo Terraform; os schemas das
+  tabelas Bronze e `ops` são definidos somente pelo SQL versionado em
+  `sql/bronze/` e `sql/ops/`.
+- O loader `src/lakehouse/loading.py` lê os metadados do objeto no GCS,
+  valida `batch_id` e `ingestion_date`, grava o objeto em
+  `<entidade>_staging` com schema explícito e `WRITE_TRUNCATE`, e aplica
+  `MERGE` na tabela final pela chave de negócio.
+- Cada entidade recebe `batch_id`, `source_file`, `ingested_at` e
+  `ingestion_date`; as tabelas finais são particionadas por
+  `ingestion_date` e clusterizadas pelos campos de filtro mais usados.
+- `ops.ingestion_batches` registra `STARTED` antes da carga e
+  `SUCCEEDED` ou `FAILED` ao final. Se o lote já estiver `SUCCEEDED`, a
+  carga é ignorada; isso evita duplicatas sem exigir transação
+  distribuída.
+- A carga é manual e usa somente os três CSVs pequenos da Fase 4.
 
 ## Transformações com dbt
 
@@ -159,3 +177,4 @@ APIs bancárias reais e dados pessoais reais.
 - [ADR 0003 — GitHub Actions como orquestrador do MVP](decisions/0003-orquestracao-github-actions.md)
 - [ADR 0004 — Segurança automatizada mínima](decisions/0004-seguranca-automatizada-minima.md)
 - [ADR 0005 — State local do Terraform no MVP](decisions/0005-estado-local-terraform.md)
+- [ADR 0006 — Carga Bronze idempotente](decisions/0006-carga-bronze-idempotente.md)
