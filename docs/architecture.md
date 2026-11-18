@@ -158,3 +158,4 @@ APIs bancárias reais e dados pessoais reais.
 - [ADR 0002 — dbt-core para Silver e Gold](decisions/0002-dbt-para-silver-e-gold.md)
 - [ADR 0003 — GitHub Actions como orquestrador do MVP](decisions/0003-orquestracao-github-actions.md)
 - [ADR 0004 — Segurança automatizada mínima](decisions/0004-seguranca-automatizada-minima.md)
+- [ADR 0005 — State local do Terraform no MVP](decisions/0005-estado-local-terraform.md)

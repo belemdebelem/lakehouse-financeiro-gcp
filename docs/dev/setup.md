@@ -53,6 +53,25 @@ uv run ruff check .
 uv lock --check
 ```
 
+## Infraestrutura (Fase 3)
+
+A configuração Terraform fica em `infrastructure/terraform/`. Requer
+`gcloud auth application-default login` (ADC) e um projeto com
+faturamento ativo. Não use chaves JSON.
+
+```bash
+cd infrastructure/terraform
+terraform init
+terraform fmt -check -recursive
+terraform validate
+cp terraform.tfvars.example terraform.tfvars
+terraform plan
+```
+
+`apply` e `destroy` só com aprovação explícita. O orçamento e os alertas
+de faturamento são configurados manualmente; veja
+`infrastructure/terraform/README.md`.
+
 ## Observações
 
 - Fase 1 concluída: instalação travada por `uv.lock`, testes de

@@ -603,7 +603,7 @@ Tarefas:
 
 **Parar e pedir aprovação.**
 
-### Fase 3 --- Infraestrutura GCP com Terraform
+### Fase 3 --- Infraestrutura GCP com Terraform (concluída)
 
 **Objetivo:** provisionar somente os recursos necessários para o MVP.
 
@@ -650,8 +650,21 @@ Tarefas:
 -   State protegido e não versionado no repositório.
 -   Procedimento de limpeza documentado.
 
-**Parar e pedir aprovação.** Nunca executar `terraform apply` ou
-destruir recursos sem autorização do usuário.
+**Resultado da execução (2026-11-17):**
+
+-   `terraform apply` autorizado e executado a partir do plano salvo:
+    `Apply complete! Resources: 22 added, 0 changed, 0 destroyed.`
+-   Bucket: `lakehouse-financeiro-demo-belemdebelem` em
+    `southamerica-east1`.
+-   Datasets: `bronze`, `silver`, `gold` e `ops`.
+-   Service accounts: `lakehouse-pipeline` e `lakehouse-dbt`.
+-   Verificação posterior: `No changes. Your infrastructure matches the
+    configuration.`
+-   Orçamento mensal de R$ 1 já existente na conta de billing foi
+    reutilizado; nenhum orçamento duplicado foi criado.
+
+**Nunca executar `terraform apply` ou destruir recursos sem autorização
+do usuário.** A autorização desta execução foi registrada acima.
 
 ### Fase 4 --- Ingestão Python para GCS
 
