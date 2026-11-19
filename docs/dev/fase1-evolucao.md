@@ -62,10 +62,12 @@ atualizado com parse/compile/build/docs. Fase 7 executada em 2026-11-19:
 `tests/unit/test_quality.py` cobre parsing, contagens, agregação e escrita
 particionada, `tests/integration/test_quality_dq.py` valida idempotência no
 BigQuery e `docs/dev/setup.md` documenta freshness, auditoria e qualidade.
-Fase 8 implementada em 2026-11-19: `sqlfluff` e `pre-commit` entraram no
+Fase 8 concluída em 2026-11-19: `sqlfluff` e `pre-commit` entraram no
 extra `dev`, `.sqlfluff`, `.gitleaks.toml`, `.checkov.yml` e
 `.pre-commit-config.yaml` foram adicionados, `backend.hcl` passou a ser
 ignorado e `docs/dev/setup.md` documentou os três workflows. WIF/OIDC,
-conta `lakehouse-ci` e backend GCS estão versionados no Terraform, mas
-`apply` e a migração de state dependem de autorização. As demais
-atualizações listadas são executadas dentro da fase correspondente.
+conta `lakehouse-ci` e backend GCS estão versionados no Terraform; o
+`apply` inicial criou 15 recursos e o state foi migrado para o GCS. CI
+verde, CD `plan` sem mudanças e build dbt com `PASS=83`, artefato publicado
+e 12 linhas `PASS` em `ops.dq_results`. As demais atualizações listadas
+são executadas dentro da fase correspondente.

@@ -918,7 +918,7 @@ Tarefas:
 
 **Parar e pedir aprovação.**
 
-### Fase 8 --- CI/CD e DevSecOps
+### Fase 8 --- CI/CD e DevSecOps (concluída)
 
 **Objetivo:** automatizar verificações e implantação controlada.
 
@@ -960,7 +960,7 @@ Tarefas:
     definida.
 -   Logs do workflow permitem entender falhas.
 
-**Resultado da implementação local (2026-11-19):**
+**Resultado da implementação e validação (2026-11-19):**
 
 -   Workflows criados: `.github/workflows/ci.yml` (testes, lint, SQL,
     Terraform, Gitleaks e Checkov), `.github/workflows/cd.yml` (`plan` e
@@ -968,15 +968,19 @@ Tarefas:
     controlada com artefatos).
 -   `sqlfluff` e `pre-commit` adicionados ao extra `dev`; Gitleaks e
     Checkov configurados com `.gitleaks.toml`, `.checkov.yml` e
-    `.pre-commit-config.yaml`.
+    `.pre-commit-config.yaml`. As exceções do Checkov estão no ADR 0004.
 -   WIF/OIDC e a conta `lakehouse-ci` versionados em
     `infrastructure/terraform/wif.tf`; o CD gera o backend GCS a partir de
     `backend.hcl.example`. O provider usa apenas os claims `sub`, `actor` e
-    `repository`, e as exceções do Checkov estão no ADR 0004.
--   `terraform plan` mostra 15 recursos novos, incluindo WIF, APIs e IAM.
-    Nenhum `apply`, criação de WIF ou migração de state foi executado.
--   `apply` e o build dbt usam `environment: demo`; é necessário configurar
-    revisores e as variáveis `GCP_*` no repositório antes da execução.
+    `repository`.
+-   `apply` inicial executado localmente com ADC: 15 recursos criados,
+    incluindo WIF, APIs e IAM. O state foi migrado para
+    `terraform/state/lakehouse-financeiro` e o `plan` posterior do CD
+    terminou sem mudanças.
+-   Variáveis `GCP_*` e revisores do environment `demo` configurados no
+    GitHub. CI verde em `Checks`, `dbt compile`, `Terraform` e `Gitleaks`.
+-   Build dbt controlado concluído com `PASS=83`, artefato `dbt-artifacts`
+    publicado e 12 linhas `PASS` em `ops.dq_results` para `2026-11-17`.
 
 **Parar e pedir aprovação.**
 

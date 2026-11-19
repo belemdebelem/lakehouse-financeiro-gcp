@@ -1,4 +1,4 @@
-# Setup e execução local (Fases 1 a 7 — concluídas)
+# Setup e execução local (Fases 1 a 8 — concluídas)
 
 ## Pré-requisitos
 
@@ -11,9 +11,9 @@
 uv sync --extra dev
 ```
 
-O `uv.lock` fixa `pytest`, `ruff` e as dependências transitivas. Não
-editar o lockfile manualmente: após mudar `pyproject.toml`, rode
-`uv lock` e versione o resultado no mesmo commit.
+O `uv.lock` fixa `pytest`, `ruff`, `sqlfluff`, `pre-commit` e as
+dependências transitivas. Não editar o lockfile manualmente: após mudar
+`pyproject.toml`, rode `uv lock` e versione o resultado no mesmo commit.
 
 Sem `uv`, é possível usar `python3 -m venv .venv`, ativar o ambiente e
 rodar `python -m pip install -e '.[dev]'`, mas isso não garante as
@@ -211,6 +211,12 @@ Configure como variáveis do repositório: `GCP_PROJECT_ID`, `GCP_REGION`,
 `BQ_DATASET_GOLD`, `BQ_DATASET_OPS`, `GCP_WIF_PROVIDER`, `GCP_CI_SA`,
 `GCP_PIPELINE_SA` e `GCP_DBT_SA`. Nenhuma chave JSON é necessária.
 O `GITHUB_TOKEN` é suficiente para o Gitleaks.
+
+Validação de 2026-11-19: CI verde em `Checks`, `dbt compile`, `Terraform` e
+`Gitleaks`; CD `plan` sem mudanças; build dbt com aprovação do environment
+`demo` e `PASS=83`, artefato `dbt-artifacts` publicado e 12 linhas `PASS` em
+`ops.dq_results` para `2026-11-17`. O `apply` inicial criou 15 recursos e o
+state foi migrado para `terraform/state/lakehouse-financeiro`.
 
 ## Infraestrutura (Fase 3)
 

@@ -1,6 +1,6 @@
 # ADR 0009 — CI/CD com WIF, scanners e backend GCS
 
-- **Status:** aceita e implementada no código na Fase 8; aplicação pendente de autorização
+- **Status:** aceita e aplicada na Fase 8
 - **Data:** 2026-11-19
 
 ## Contexto
@@ -53,12 +53,13 @@ explícita.
 
 ## Consequências
 
-- É necessário configurar no GitHub as variáveis `GCP_PROJECT_ID`,
-  `GCP_REGION`, `GCS_BUCKET_NAME`, `BQ_DATASET_*`, `GCP_WIF_PROVIDER`,
-  `GCP_CI_SA`, `GCP_PIPELINE_SA` e `GCP_DBT_SA`.
-- É necessário configurar revisores no environment `demo`; sem isso, a
-  aprovação humana não é garantida pelo workflow.
-- O `terraform plan` atual mostra 15 recursos novos. Nenhum `apply`,
-  criação de WIF ou migração de state foi executado nesta fase.
+- As variáveis `GCP_PROJECT_ID`, `GCP_REGION`, `GCS_BUCKET_NAME`,
+  `BQ_DATASET_*`, `GCP_WIF_PROVIDER`, `GCP_CI_SA`, `GCP_PIPELINE_SA` e
+  `GCP_DBT_SA` foram configuradas no GitHub.
+- O environment `demo` tem revisor obrigatório configurado; a aprovação
+  humana foi exercitada no build dbt controlado.
+- O `apply` inicial foi executado localmente com ADC e criou 15 recursos.
+  O state foi migrado para o bucket do lakehouse e o `plan` posterior do
+  CD terminou sem mudanças.
 - O bucket de state é gerenciado pelo próprio Terraform; isso é aceitável
   para a demonstração, mas exige cuidado em futura destruição do bucket.
