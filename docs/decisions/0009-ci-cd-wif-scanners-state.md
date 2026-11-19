@@ -15,9 +15,9 @@ suporta execução remota segura do Terraform.
 
 Adotar GitHub Actions com Workload Identity Federation/OIDC. O provider
 aceita o audience padrão usado por `google-github-actions/auth`, derivado do
-próprio nome do provider, e usa `assertion.sub` para restringir o principal
-ao repositório nos eventos de push em `main` e pull request. Três contas de
-serviço recebem o papel `iam.workloadIdentityUser` para esse principal:
+próprio nome do provider, e restringe o principal pelo repositório. Três
+contas de serviço recebem o papel `iam.workloadIdentityUser` para esse
+principal:
 
 - `lakehouse-ci`: identidade de `plan`/`apply` do Terraform.
 - `lakehouse-pipeline`: ingestão e carga Bronze no build controlado.

@@ -33,7 +33,7 @@ resource "google_iam_workload_identity_pool_provider" "github" {
   workload_identity_pool_provider_id = local.wif_provider_id
   display_name                       = "GitHub OIDC"
   description                        = "Provider OIDC dos workflows do GitHub Actions."
-  attribute_condition                = "assertion.sub == \"repo:${var.github_repository}:ref:refs/heads/main\" || assertion.sub == \"repo:${var.github_repository}:pull_request\""
+  attribute_condition                = "attribute.repository == \"${var.github_repository}\""
 
   attribute_mapping = {
     "google.subject"       = "assertion.sub"

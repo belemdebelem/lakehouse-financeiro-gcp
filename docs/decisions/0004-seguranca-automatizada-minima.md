@@ -44,6 +44,11 @@ em `.checkov.yml`, com justificativa registrada aqui:
   projeto para criar e administrar SAs e IAM via Terraform. O risco é
   mitigado por WIF sem chaves, org policy que proíbe chaves de SA,
   identidades separadas e aprovação humana para `apply`.
+- `CKV_GCP_125`: a regra exige uma condição literal sobre `assertion.sub`,
+  o que impediria o mesmo provider de atender push em `main` e pull
+  requests. A condição adotada restringe `attribute.repository` ao
+  repositório do projeto, os claims mapeados são apenas `sub`, `actor` e
+  `repository`, e o audience é limitado ao próprio provider.
 
 ## Riscos aceitos
 
