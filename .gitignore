@@ -53,6 +53,7 @@ data/generated/
 !data/sample/**/*.csv
 
 # OS/IDE
+prints slide/
 .DS_Store
 .idea/
 .vscode/
