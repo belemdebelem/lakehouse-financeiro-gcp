@@ -922,7 +922,8 @@ Tarefas:
 
 **Objetivo:** automatizar verificações e implantação controlada.
 
-Orquestração registrada no ADR 0003; segurança mínima no ADR 0004.
+Orquestração registrada no ADR 0003; segurança mínima no ADR 0004;
+WIF, scanners e backend GCS no ADR 0009.
 
 Tarefas:
 
@@ -958,6 +959,23 @@ Tarefas:
 -   `apply` não ocorre automaticamente sem a política de aprovação
     definida.
 -   Logs do workflow permitem entender falhas.
+
+**Resultado da implementação local (2026-11-19):**
+
+-   Workflows criados: `.github/workflows/ci.yml` (testes, lint, SQL,
+    Terraform, Gitleaks e Checkov), `.github/workflows/cd.yml` (`plan` e
+    `apply` separados) e `.github/workflows/dbt-build.yml` (execução
+    controlada com artefatos).
+-   `sqlfluff` e `pre-commit` adicionados ao extra `dev`; Gitleaks e
+    Checkov configurados com `.gitleaks.toml`, `.checkov.yml` e
+    `.pre-commit-config.yaml`.
+-   WIF/OIDC e a conta `lakehouse-ci` versionados em
+    `infrastructure/terraform/wif.tf`; o CD gera o backend GCS a partir de
+    `backend.hcl.example`.
+-   `terraform plan` mostra 15 recursos novos, incluindo WIF, APIs e IAM.
+    Nenhum `apply`, criação de WIF ou migração de state foi executado.
+-   `apply` e o build dbt usam `environment: demo`; é necessário configurar
+    revisores e as variáveis `GCP_*` no repositório antes da execução.
 
 **Parar e pedir aprovação.**
 

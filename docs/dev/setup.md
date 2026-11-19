@@ -179,8 +179,38 @@ RUN_DQ_INTEGRATION=1 uv run pytest tests/integration/test_quality_dq.py -q
 ```bash
 uv run pytest -q
 uv run ruff check .
+uv run sqlfluff lint dbt/models
 uv lock --check
 ```
+
+## CI/CD e DevSecOps (Fase 8)
+
+Instale os hooks uma vez por clone e execute todos antes do push:
+
+```bash
+uv run pre-commit install
+uv run pre-commit run --all-files
+```
+
+O hook de SQL usa `.sqlfluff`, o de Python usa `ruff` e o Gitleaks usa
+`.gitleaks.toml`. O Checkov roda no CI com `.checkov.yml`.
+
+Os workflows ficam em `.github/workflows/`:
+
+- `ci.yml`: `pull_request`/`push` em `main`; testes, lint, SQLFluff,
+  `dbt parse`, `dbt compile`, Terraform, Gitleaks e Checkov. `dbt compile`
+  usa WIF e é ignorado em PRs de forks.
+- `cd.yml`: `workflow_dispatch` com `plan` e `apply` separados. O `apply`
+  só roda em `main` e exige o environment `demo` com revisores.
+- `dbt-build.yml`: `workflow_dispatch` com `ingestion_date`, environment
+  `demo`, ingestão/carga com a SA do pipeline, dbt/qualidade com a SA do
+  dbt e upload dos artefatos em `dbt/target/`.
+
+Configure como variáveis do repositório: `GCP_PROJECT_ID`, `GCP_REGION`,
+`GCS_BUCKET_NAME`, `BQ_DATASET_BRONZE`, `BQ_DATASET_SILVER`,
+`BQ_DATASET_GOLD`, `BQ_DATASET_OPS`, `GCP_WIF_PROVIDER`, `GCP_CI_SA`,
+`GCP_PIPELINE_SA` e `GCP_DBT_SA`. Nenhuma chave JSON é necessária.
+O `GITHUB_TOKEN` é suficiente para o Gitleaks.
 
 ## Infraestrutura (Fase 3)
 
@@ -197,8 +227,11 @@ cp terraform.tfvars.example terraform.tfvars
 terraform plan
 ```
 
-`apply` e `destroy` só com aprovação explícita. O orçamento e os alertas
-de faturamento são configurados manualmente; veja
+`apply` e `destroy` só com aprovação explícita. O CD gera `backend.tf` e
+`backend.hcl` a partir das variáveis do repositório; localmente não há
+backend remoto configurado. A migração do state local para o bucket depende
+de autorização. O orçamento e os alertas de
+faturamento são configurados manualmente; veja
 `infrastructure/terraform/README.md`.
 
 ## Observações
@@ -217,5 +250,8 @@ de faturamento são configurados manualmente; veja
 - Fase 7 concluída: `DBT_TARGET` usado no resumo, `store_failures` em
   `bronze_dbt_test__audit`, freshness na Bronze, DDL e CLI em
   `ops.dq_results`, testes unitários e integração opt-in de idempotência.
+- Fase 8 implementada no código: SQLFluff, pre-commit, Gitleaks, Checkov,
+  workflows com WIF e backend GCS declarado; `apply`/migração de state e
+  configuração de variáveis/revisores no GitHub pendentes.
 - `docs/dev/fase1-evolucao.md` registra como estes artefatos serão
   atualizados em cada fase seguinte.

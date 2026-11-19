@@ -17,3 +17,13 @@ output "dbt_service_account_email" {
   description = "Identidade de execução do dbt."
   value       = google_service_account.dbt.email
 }
+
+output "ci_service_account_email" {
+  description = "Identidade de execução dos workflows de CI e CD."
+  value       = google_service_account.ci.email
+}
+
+output "wif_provider" {
+  description = "Nome completo do provider WIF para uso na action google-github-actions/auth."
+  value       = "projects/${data.google_project.project.number}/locations/global/workloadIdentityPools/${local.wif_pool_id}/providers/${local.wif_provider_id}"
+}

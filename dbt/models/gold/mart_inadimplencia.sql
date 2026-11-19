@@ -15,8 +15,8 @@ params as (
 )
 
 select
-    date_trunc(i.due_date, month) as due_month,
     c.product_type,
+    date_trunc(i.due_date, month) as due_month,
     count(*) as overdue_installment_count,
     sum(
         i.amount_due - case
@@ -26,10 +26,11 @@ select
     ) as overdue_amount,
     max(date_diff(p.as_of_date, i.due_date, day)) as max_overdue_days
 from installments as i
-join contracts as c
+inner join contracts as c
     on i.contract_id = c.contract_id
 cross join params as p
-where i.due_date < p.as_of_date
+where
+    i.due_date < p.as_of_date
     and (i.paid_at is null or i.paid_at > p.as_of_date)
     and i.status in ('open', 'overdue')
 group by date_trunc(i.due_date, month), c.product_type

@@ -19,6 +19,8 @@ dependencies = [
 dev = [
   "pytest>=8.0",
   "ruff>=0.6",
+  "sqlfluff>=4.5.0",
+  "pre-commit>=4.7.0",
 ]
 
 [tool.setuptools.packages.find]

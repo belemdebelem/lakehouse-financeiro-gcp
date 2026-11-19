@@ -1,0 +1,108 @@
+name: CD - Terraform
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Operação Terraform
+        required: true
+        default: plan
+        type: choice
+        options:
+          - plan
+          - apply
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cd-terraform
+  cancel-in-progress: false
+
+env:
+  GCP_REGION: southamerica-east1
+
+jobs:
+  plan:
+    name: Plan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      GCS_BUCKET_NAME: ${{ vars.GCS_BUCKET_NAME }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.17.2
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_CI_SA }}
+      - name: Write backend config
+        run: |
+          printf 'terraform {\n  backend "gcs" {\n  }\n}\n' > backend.tf
+          printf 'bucket = "%s"\nprefix = "terraform/state/lakehouse-financeiro"\n' "$GCS_BUCKET_NAME" > backend.hcl
+        working-directory: infrastructure/terraform
+      - name: Write variables
+        run: printf 'project_id = "%s"\nbucket_name = "%s"\nregion = "%s"\n' "$GCP_PROJECT_ID" "$GCS_BUCKET_NAME" "$GCP_REGION" > terraform.auto.tfvars
+        working-directory: infrastructure/terraform
+      - name: Init
+        run: terraform init -input=false -backend-config=backend.hcl -migrate-state -force-copy
+        working-directory: infrastructure/terraform
+      - name: Validate
+        run: terraform validate
+        working-directory: infrastructure/terraform
+      - name: Plan
+        run: terraform plan -input=false -out=tfplan
+        working-directory: infrastructure/terraform
+      - name: Show plan
+        run: terraform show -no-color tfplan
+        working-directory: infrastructure/terraform
+      - uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan
+          path: infrastructure/terraform/tfplan
+          retention-days: 1
+
+  apply:
+    name: Apply
+    needs: plan
+    if: inputs.action == 'apply' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: demo
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      GCS_BUCKET_NAME: ${{ vars.GCS_BUCKET_NAME }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.17.2
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_CI_SA }}
+      - name: Write backend config
+        run: |
+          printf 'terraform {\n  backend "gcs" {\n  }\n}\n' > backend.tf
+          printf 'bucket = "%s"\nprefix = "terraform/state/lakehouse-financeiro"\n' "$GCS_BUCKET_NAME" > backend.hcl
+        working-directory: infrastructure/terraform
+      - name: Write variables
+        run: printf 'project_id = "%s"\nbucket_name = "%s"\nregion = "%s"\n' "$GCP_PROJECT_ID" "$GCS_BUCKET_NAME" "$GCP_REGION" > terraform.auto.tfvars
+        working-directory: infrastructure/terraform
+      - name: Init
+        run: terraform init -input=false -backend-config=backend.hcl -migrate-state -force-copy
+        working-directory: infrastructure/terraform
+      - uses: actions/download-artifact@v4
+        with:
+          name: terraform-plan
+          path: infrastructure/terraform
+      - name: Apply
+        run: terraform apply -input=false -auto-approve tfplan
+        working-directory: infrastructure/terraform

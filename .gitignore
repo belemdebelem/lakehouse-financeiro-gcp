@@ -38,6 +38,9 @@ dbt/.user.yml
 crash.log
 *.tfvars
 !*.tfvars.example
+backend.tf
+backend.hcl
+!backend.hcl.example
 override.tf
 override.tf.json
 *_override.tf

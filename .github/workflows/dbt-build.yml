@@ -1,0 +1,88 @@
+name: DBT - Build controlado
+
+on:
+  workflow_dispatch:
+    inputs:
+      ingestion_date:
+        description: Data de ingestão no formato YYYY-MM-DD
+        required: true
+        default: "2026-01-31"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dbt-build-${{ inputs.ingestion_date }}
+  cancel-in-progress: false
+
+env:
+  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  GOOGLE_CLOUD_PROJECT: ${{ vars.GCP_PROJECT_ID }}
+  GCP_REGION: ${{ vars.GCP_REGION || 'southamerica-east1' }}
+  GCP_LOCATION: ${{ vars.GCP_REGION || 'southamerica-east1' }}
+  GCS_BUCKET_NAME: ${{ vars.GCS_BUCKET_NAME }}
+  BQ_DATASET_BRONZE: ${{ vars.BQ_DATASET_BRONZE || 'bronze' }}
+  BQ_DATASET_SILVER: ${{ vars.BQ_DATASET_SILVER || 'silver' }}
+  BQ_DATASET_GOLD: ${{ vars.BQ_DATASET_GOLD || 'gold' }}
+  BQ_DATASET_OPS: ${{ vars.BQ_DATASET_OPS || 'ops' }}
+  DBT_TARGET: dev
+  DBT_VARS: '{"as_of_date": "${{ inputs.ingestion_date }}"}'
+  PIPELINE_NAME: lakehouse-financeiro
+  LOG_LEVEL: INFO
+  INGESTION_DATE: ${{ inputs.ingestion_date }}
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    environment: demo
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Sync
+        run: uv sync --extra dev --frozen
+      - uses: google-github-actions/auth@v2
+        id: auth_pipeline
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_PIPELINE_SA }}
+      - name: Ingestão
+        run: uv run python -m lakehouse.ingestion
+      - name: Carga Bronze
+        run: uv run python -m lakehouse.loading
+      - uses: google-github-actions/auth@v2
+        id: auth_dbt
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DBT_SA }}
+      - name: dbt deps
+        run: uv run dbt deps --project-dir dbt --profiles-dir dbt
+      - name: dbt build
+        run: uv run dbt build --project-dir dbt --profiles-dir dbt --vars "$DBT_VARS"
+      - name: dbt source freshness
+        run: uv run dbt source freshness --project-dir dbt --profiles-dir dbt
+      - name: dbt docs generate
+        run: uv run dbt docs generate --project-dir dbt --profiles-dir dbt --vars "$DBT_VARS"
+      - name: Qualidade Fase 7
+        run: uv run python -m lakehouse.quality --ingestion-date "$INGESTION_DATE"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dbt-artifacts
+          path: |
+            dbt/target/manifest.json
+            dbt/target/catalog.json
+            dbt/target/run_results.json
+            dbt/target/sources.json
+            dbt/target/compiled
+            dbt/logs/dbt.log
+          retention-days: 14

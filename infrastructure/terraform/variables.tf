@@ -22,3 +22,9 @@ variable "labels" {
     project = "lakehouse-financeiro"
   }
 }
+
+variable "github_repository" {
+  description = "Repositorio GitHub autorizado a assumir identidades federadas."
+  type        = string
+  default     = "belemdebelem/lakehouse-financeiro-gcp"
+}

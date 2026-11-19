@@ -151,14 +151,22 @@ mesmo arquivo mantém o mesmo `batch_id` e é idempotente.
   baseado em logs. Sem uptime checks, dashboards amplos ou métricas
   customizadas de alta cardinalidade no MVP.
 - IAM com menor privilégio. ADC na execução local; Workload Identity
-  Federation para GitHub Actions quando o CD for implementado. Nenhuma
+  Federation para GitHub Actions já versionado, com principal limitado ao
+  repositório e três contas de serviço: CI/deploy, pipeline e dbt. Nenhuma
   chave JSON de service account no repositório.
+- O CI usa WIF apenas para `dbt compile` em PRs do mesmo repositório; PRs
+  de forks executam testes, lint, SQLFluff, `dbt parse`, Terraform e
+  scanners sem credenciais GCP.
+- O CD separa `plan` de `apply`; `apply` e o build dbt exigem o environment
+  `demo` com aprovação humana. Variáveis do repositório substituem segredos
+  estáticos.
 - Secret Manager permanece disponível para um segredo real caso surja
   essa necessidade. ADC/WIF evitam criar segredo estático para a
   autenticação normal do MVP; não criar segredo de demonstração fictício.
-- Terraform para os recursos. O state remoto restrito será avaliado na
-  Fase 3/8; se necessário, seu pequeno custo e o bootstrap serão
-  explicitados no plano antes da criação.
+- Terraform para os recursos. O CD gera o backend GCS, reaproveitando o
+  bucket do lakehouse com prefixo dedicado, sem novo bucket de state. A
+  migração do state local e o `apply` do WIF ainda dependem de autorização
+  explícita.
 
 ## Controles de custo
 
@@ -178,8 +186,9 @@ mesmo arquivo mantém o mesmo `batch_id` e é idempotente.
 
 ## Segurança, logging e monitoramento
 
-- Gitleaks verifica segredos no repositório; Checkov verifica Terraform;
-  IAM reduz permissões; ADC/WIF evitam chaves duradouras.
+- Gitleaks verifica segredos no pre-commit e no CI; Checkov verifica
+  Terraform no CI; SQLFluff valida os modelos dbt; IAM reduz permissões;
+  ADC/WIF evitam chaves duradouras.
 - O `profiles.yml` do dbt não contém segredos e usa ADC/WIF; os artefatos
   do dbt não incluem credenciais.
 - Cada log de pipeline inclui `pipeline_name`, `batch_id`, `source_file`,

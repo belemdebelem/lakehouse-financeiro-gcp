@@ -10,7 +10,9 @@ with source as (
     select *
     from {{ source('bronze', 'installments') }}
     {% if is_incremental() %}
-    where updated_at >= timestamp_sub(current_timestamp(), interval {{ var('late_arrival_days') }} day)
+        where
+            updated_at
+            >= timestamp_sub(current_timestamp(), interval {{ var('late_arrival_days') }} day)
     {% endif %}
 ),
 
@@ -22,12 +24,12 @@ ranked as (
         paid_at,
         amount_due,
         amount_paid,
-        lower(trim(status)) as status,
         updated_at,
         batch_id,
         source_file,
         ingested_at,
         ingestion_date,
+        lower(trim(status)) as status,
         row_number() over (
             partition by contract_id, installment_number
             order by updated_at desc, ingested_at desc, source_file desc

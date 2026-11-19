@@ -1,6 +1,6 @@
 # ADR 0005 — State local do Terraform no MVP
 
-- **Status:** aceita e aplicada na Fase 3
+- **Status:** aceita na Fase 3; backend GCS declarado na Fase 8, migração pendente
 - **Data:** 2026-11-17
 
 ## Contexto
@@ -36,3 +36,9 @@ do provider. Não criar bucket remoto de state nesta fase.
 - Se a Fase 8 adotar GitHub Actions com WIF, o backend remoto será
   reavaliado antes de configurar o deploy, com plano de custo e
   bootstrap explícitos.
+
+## Atualização da Fase 8
+
+A Fase 8 configurou o CD para gerar o backend GCS e reaproveitar o bucket do
+lakehouse com prefixo dedicado. O estado local continua válido até a
+migração autorizada; veja `docs/decisions/0009-ci-cd-wif-scanners-state.md`.

@@ -1,9 +1,10 @@
-# Terraform do MVP (Fases 3, 6 e 7)
+# Terraform do MVP (Fases 3, 6, 7 e 8)
 
 ## Recursos versionados
 
-- APIs: `serviceusage`, `cloudresourcemanager`, `iam`, `storage` e
-  `bigquery`, apenas as necessárias aos recursos aprovados.
+- APIs: `serviceusage`, `cloudresourcemanager`, `iam`, `iamcredentials`,
+  `sts`, `storage` e `bigquery`, apenas as necessárias aos recursos
+  aprovados.
 - GCS: um bucket regional Standard para Landing/Raw, com acesso uniforme,
   prevenção de acesso público, versionamento desligado e retenção de 30
   dias para dados de demonstração.
@@ -11,8 +12,10 @@
   `silver_dev`, `gold`, `gold_dev` e `ops` na mesma região do bucket. Os
   datasets `*_dev` isolam as execuções locais do dbt na Fase 6; o dataset de
   auditoria guarda falhas dos testes na Fase 7.
-- IAM: duas contas de serviço separadas — `lakehouse-pipeline` e
-  `lakehouse-dbt`.
+- IAM: três contas de serviço separadas — `lakehouse-pipeline`,
+  `lakehouse-dbt` e `lakehouse-ci`.
+- WIF/OIDC: pool `github-actions`, provider `github` e vínculo restrito ao
+  repositório `belemdebelem/lakehouse-financeiro-gcp`.
 - Nenhum Cloud Scheduler, Composer, Dataflow, bucket de state ou serviço
   opcional é criado nesta fase.
 
@@ -41,11 +44,13 @@ do Git; o repositório versiona apenas `terraform.tfvars.example`.
 
 ## State
 
-O state é local (`terraform.tfstate`) e ignorado pelo Git. Isso evita um
-bucket adicional e seu custo, mas impede colaboração e execução remota
-segura. O `.terraform.lock.hcl` é versionado para fixar o provider.
-A mudança para backend remoto será avaliada na Fase 8, quando houver
-GitHub Actions; veja `docs/decisions/0005-estado-local-terraform.md`.
+O state continua local (`terraform.tfstate`) e ignorado pelo Git até a
+migração autorizada. A Fase 8 faz o CD gerar `backend.tf` e `backend.hcl`,
+com exemplo em `backend.hcl.example`, usando o bucket e o prefixo
+`terraform/state/lakehouse-financeiro`, sem criar um bucket adicional. O
+uso local permanece com state local e `terraform init`. O
+`.terraform.lock.hcl` é versionado para
+fixar o provider. Veja `docs/decisions/0009-ci-cd-wif-scanners-state.md`.
 
 ## IAM
 
@@ -53,11 +58,20 @@ GitHub Actions; veja `docs/decisions/0005-estado-local-terraform.md`.
 |---|---|
 | `lakehouse-pipeline` | `storage.objectCreator` e `storage.objectViewer` no bucket; `bigquery.jobUser` no projeto; `bigquery.dataEditor` em `bronze` e `ops`. |
 | `lakehouse-dbt` | `bigquery.jobUser` no projeto; `bigquery.dataViewer` em `bronze`; `bigquery.dataEditor` em `bronze_dbt_test__audit`, `silver`, `silver_dev`, `gold`, `gold_dev` e `ops`. |
+| `lakehouse-ci` | `serviceusage.serviceUsageAdmin`, `storage.admin`, `bigquery.admin`, `iam.serviceAccountAdmin`, `iam.workloadIdentityPoolAdmin`, `iam.serviceAccountUser` e `resourcemanager.projectIamAdmin` no projeto, para `plan`/`apply` controlado. |
+| Principal WIF do repositório | `iam.workloadIdentityUser` nas três contas de serviço; restrito ao repositório e sem chaves JSON. |
 | Usuário local via ADC | Permissões administrativas necessárias para `plan`/`apply`, fora do Terraform e fora do repositório. |
-| CI/deploy (Fase 8) | Identidade separada via Workload Identity Federation; papéis mínimos serão definidos quando o CD existir. |
 
 As permissões de leitura no bucket são necessárias para a precondição de
 geração usada na ingestão (Fase 4), que evita sobrescrever o original.
+
+## CI/CD (Fase 8)
+
+O workflow `CD - Terraform` executa `plan` e `apply` em jobs separados; o
+`apply` exige o environment `demo` com revisores configurados no GitHub.
+As variáveis `GCP_PROJECT_ID`, `GCS_BUCKET_NAME`, `GCP_WIF_PROVIDER` e
+`GCP_CI_SA` devem existir no repositório. O `terraform plan` local mostra
+15 recursos novos; nenhum `apply` foi executado nesta fase.
 
 ## Orçamento e alertas
 

@@ -108,6 +108,41 @@ a causa na origem, no DDL ou no modelo antes de rerodar; não desative o
 teste. Para isolar uma falha persistente, inspecione
 `bronze_dbt_test__audit.<nome_do_teste>` e os artefatos em `dbt/target/`.
 
+## CI/CD e segurança (Fase 8)
+
+Verificações locais antes do push:
+
+```bash
+uv run pytest -q
+uv run ruff check .
+uv run sqlfluff lint dbt/models
+uv run pre-commit run --all-files
+```
+
+O workflow `CI` bloqueia PRs com falha de testes, lint, SQLFluff,
+`dbt parse`, Terraform, Gitleaks ou Checkov. `dbt compile` usa WIF e só
+executa em PRs do próprio repositório; forks recebem as verificações sem
+credenciais GCP.
+
+Para promover mudanças:
+
+1. Rodar `CD - Terraform` com `action=plan` e conferir o plano publicado.
+2. Rodar novamente com `action=apply`; o job depende do environment `demo`
+   com revisores configurados no GitHub.
+3. Rodar `DBT - Build controlado` com `ingestion_date`; também exige
+   `demo`. O workflow publica `manifest.json`, `catalog.json`,
+   `run_results.json`, `sources.json`, SQL compilado e `dbt.log`.
+
+Se o `apply` falhar por WIF, confira `GCP_WIF_PROVIDER`, as variáveis de SA
+e se o principal do repositório já foi criado no GCP. Se o build dbt falhar
+por freshness, execute a ingestão/carga do lote e repita o dispatch; se
+falhar por teste de modelo, inspecione
+`bronze_dbt_test__audit.<nome_do_teste>` como na Fase 7.
+
+WIF, conta `lakehouse-ci` e backend GCS estão versionados, mas ainda não
+foram aplicados. O state local deve ser migrado apenas com autorização e
+plano explícitos.
+
 ## Limitações
 
 - `rejected_count` é uma diferença observada entre Bronze e Silver, não uma

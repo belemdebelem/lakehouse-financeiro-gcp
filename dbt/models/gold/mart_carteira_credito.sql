@@ -31,8 +31,9 @@ select
     sum(c.principal_amount) as original_principal_amount,
     count(*) as contract_count
 from month_ends as m
-join contracts as c
-    on c.start_date <= m.month_end
-    and c.end_date >= m.month_end
-    and c.status in ('active', 'closed')
+inner join contracts as c
+    on
+        m.month_end >= c.start_date
+        and m.month_end <= c.end_date
+        and c.status in ('active', 'closed')
 group by m.month_start, c.product_type

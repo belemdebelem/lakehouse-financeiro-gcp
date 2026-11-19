@@ -13,6 +13,8 @@ resource "google_project_service" "required" {
     "bigquery.googleapis.com",
     "cloudresourcemanager.googleapis.com",
     "iam.googleapis.com",
+    "iamcredentials.googleapis.com",
+    "sts.googleapis.com",
     "storage.googleapis.com",
   ])
 

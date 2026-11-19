@@ -45,6 +45,8 @@ Ao final de cada fase, revisar o diff dos arquivos acima e executar:
 uv lock --check
 uv run pytest -q
 uv run ruff check .
+uv run sqlfluff lint dbt/models
+uv run pre-commit run --all-files
 ```
 
 Status: Fase 1 concluída em 2026-11-17. Fase 4 executada em 2026-11-17:
@@ -60,5 +62,10 @@ atualizado com parse/compile/build/docs. Fase 7 executada em 2026-11-19:
 `tests/unit/test_quality.py` cobre parsing, contagens, agregação e escrita
 particionada, `tests/integration/test_quality_dq.py` valida idempotência no
 BigQuery e `docs/dev/setup.md` documenta freshness, auditoria e qualidade.
-As demais atualizações listadas são executadas dentro da fase
-correspondente.
+Fase 8 implementada em 2026-11-19: `sqlfluff` e `pre-commit` entraram no
+extra `dev`, `.sqlfluff`, `.gitleaks.toml`, `.checkov.yml` e
+`.pre-commit-config.yaml` foram adicionados, `backend.hcl` passou a ser
+ignorado e `docs/dev/setup.md` documentou os três workflows. WIF/OIDC,
+conta `lakehouse-ci` e backend GCS estão versionados no Terraform, mas
+`apply` e a migração de state dependem de autorização. As demais
+atualizações listadas são executadas dentro da fase correspondente.

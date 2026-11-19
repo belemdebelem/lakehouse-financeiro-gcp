@@ -1,0 +1,21 @@
+repos:
+  - repo: local
+    hooks:
+      - id: ruff
+        name: ruff
+        entry: ruff check --fix
+        language: python
+        additional_dependencies: ["ruff>=0.6"]
+        types: [python]
+        pass_filenames: false
+      - id: sqlfluff
+        name: sqlfluff
+        entry: sqlfluff lint dbt/models
+        language: python
+        additional_dependencies: ["sqlfluff>=4.5.0"]
+        types: [sql]
+        pass_filenames: false
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
