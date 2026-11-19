@@ -25,9 +25,10 @@ ponto.
   domínios inválidos, contrato sem cliente, parcela sem contrato,
   `end_date` anterior a `start_date` e `amount_paid` maior que
   `amount_due`.
-- Regras analíticas e testes do dbt foram implementados na Fase 6;
-  `store_failures`, `source freshness` e persistência de resultados ficam
-  para a Fase 7. A validação Python desta fase é apenas estrutural.
+- Regras analíticas e testes do dbt foram implementados na Fase 6. Na
+  Fase 7, `store_failures`, `source freshness` e `ops.dq_results` passaram
+  a ser persistentes e rastreáveis. A validação Python da Fase 2 continua
+  sendo apenas estrutural.
 
 ## `customers` — clientes fictícios
 
@@ -155,7 +156,52 @@ Modelos Gold são tabelas recreáveis.
 
 O build em `dev` produziu: `silver_customers` 10, `silver_contracts` 13,
 `silver_installments` 78, `mart_carteira_credito` 38,
-`mart_inadimplencia` 13 e `fato_pagamentos` 61 linhas.
+`mart_inadimplencia` 13 e `fato_pagamentos` 61 linhas. A reexecução do
+mesmo lote manteve essas contagens.
+
+## Qualidade, auditoria e recuperação (Fase 7)
+
+### `bronze_dbt_test__audit`
+
+Dataset criado pelo Terraform e usado pelo dbt quando
+`data_tests.+store_failures: true`. Cada teste com falha grava uma tabela
+com seu nome; uma execução sem falhas deixa as tabelas vazias. A macro
+`generate_schema_name` preserva o nome do schema para testes, sem sufixo
+`_dev`. Após o `dbt test` final, o dataset continha 77 tabelas de auditoria.
+
+### `dbt/target/sources.json`
+
+Artefato de `dbt source freshness`. O campo `results[]` traz `status` e
+`max_loaded_at_time_ago_in_s` por fonte. Os limiares configurados em
+`bronze.*.ingested_at` são `warn_after=72h` e `error_after=168h`. Na
+validação final, as três fontes ficaram `PASS`, com maior idade de
+`45.5` horas.
+
+### `ops.dq_results`
+
+Tabela operacional criada por `sql/ops/dq_results.sql`, particionada por
+`ingestion_date` e clusterizada por `entity` e `metric_name`.
+
+| Campo | Tipo lógico | Regra |
+|---|---|---|
+| `ingestion_date` | DATE | Data do lote analisado; chave e partição. |
+| `entity` | STRING | `customers`, `contracts`, `installments`, `dbt` ou `bronze`. |
+| `batch_id` | STRING | Identidade do lote para entidades; `invocation_id` do dbt para métricas de teste/freshness. |
+| `metric_name` | STRING | Métrica registrada; vence com `ingestion_date` e `entity`. |
+| `metric_value` | NUMERIC | Valor da métrica, convertido de texto pelo módulo de qualidade. |
+| `status` | STRING | `PASS`, `WARN` ou `FAIL`. |
+| `details` | STRING | JSON com metadados da métrica, como `batch_id`, `invocation_id` e limiares de freshness. |
+| `checked_at` | TIMESTAMP | Instante UTC da verificação. |
+
+As métricas por entidade são `input_count`, `output_count` e
+`rejected_count`. As métricas globais são `dbt_tests_passed`,
+`dbt_tests_failed` e `source_freshness_max_age_hours`. O módulo
+`src/lakehouse/quality.py` conta Bronze e Silver do target ativo, lê os
+artefatos do dbt e grava 12 linhas com `load_table_from_json` no decorador
+de partição e `WRITE_TRUNCATE`. Reexecutar para a mesma data substitui a
+partição. A validação final registrou 12 linhas `PASS` para `2026-11-17`,
+com `10/10`, `13/13` e `78/78` linhas de entrada/saída, zero rejeitados,
+77 testes aprovados e zero falhas.
 
 ## Mapeamento para dbt
 
@@ -168,7 +214,7 @@ O build em `dev` produziu: `silver_customers` 10, `silver_contracts` 13,
 Os modelos Gold do MVP são `mart_carteira_credito`, `mart_inadimplencia`
 e `fato_pagamentos`, construídos a partir dos modelos Silver.
 
-## Testes dbt implementados (Fase 6)
+## Testes dbt implementados (Fases 6 e 7)
 
 | Alvo | Teste |
 |---|---|
@@ -181,7 +227,8 @@ e `fato_pagamentos`, construídos a partir dos modelos Silver.
 | `customer_segment`, `product_type`, `status` | `accepted_values` |
 | Datas e valores | `assert_contract_dates_consistent`, `assert_paid_at_after_contract_start` e `assert_installment_amounts_valid` |
 | Chaves dos marts | `assert_unique_mart_carteira_credito_key`, `assert_unique_mart_inadimplencia_key` e `assert_unique_fato_pagamentos_key` |
-| Bronze | `dbt source freshness` usando `ingested_at`: previsto para a Fase 7 |
+| Bronze | `dbt source freshness` usando `ingested_at`, com aviso em 72h e erro em 168h |
+| Falha de teste | `store_failures` em `bronze_dbt_test__audit.<nome_do_teste>` |
 
 ## Regras iniciais de qualidade
 
@@ -191,15 +238,15 @@ e `fato_pagamentos`, construídos a partir dos modelos Silver.
   do contrato; valores são não negativos e parcelas não ultrapassam o
   valor devido.
 - Parcelas sem contrato e contratos sem cliente são detectados por testes
-  de relacionamento; contabilização em tabela de rejeitados está prevista
-  para a Fase 7. Nenhum registro inválido é descartado em silêncio.
+  de relacionamento. Nenhum registro inválido é descartado em silêncio.
 - Regra da inadimplência implementada: parcela com vencimento anterior à
   data de referência, sem pagamento integral até essa data e com status
   `open` ou `overdue`.
 - Exclusões não são inferidas pela ausência de um registro em um arquivo.
-- Os testes estão implementados no dbt. Persistência de falhas com
-  `store_failures` e resumo em `ops.dq_results` estão previstos para a
-  Fase 7.
+- Os testes estão implementados no dbt. Falhas ficam em
+  `bronze_dbt_test__audit` e o resumo em `ops.dq_results`. O campo
+  `rejected_count` é a diferença não negativa entre contagens de Bronze e
+  Silver; não existe ainda uma tabela física de registros rejeitados.
 
 ## Limites assumidos
 

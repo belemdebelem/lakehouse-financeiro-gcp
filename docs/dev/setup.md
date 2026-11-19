@@ -1,4 +1,4 @@
-# Setup e execução local (Fases 1 a 6 — concluídas)
+# Setup e execução local (Fases 1 a 7 — concluídas)
 
 ## Pré-requisitos
 
@@ -33,8 +33,10 @@ mesmas versões do lockfile.
   usar chaves JSON de service account no repositório.
 - `GCS_BUCKET_NAME` é lido pela ingestão da Fase 4; `BQ_DATASET_*` são
   lidos pela carga da Fase 5 e pelo dbt na Fase 6.
-- `DBT_TARGET` seleciona o perfil do dbt; o padrão é `dev`. `prod` grava
-  em `silver`/`gold`; `dev` grava em `silver_dev`/`gold_dev`.
+- `DBT_TARGET` seleciona o perfil do dbt e o dataset Silver lido pelo
+  resumo de qualidade; o padrão é `dev`. `prod` grava em `silver`/`gold`;
+  `dev` grava em `silver_dev`/`gold_dev`. O schema de auditoria
+  `bronze_dbt_test__audit` não recebe sufixo `_dev`.
 - Definir `GOOGLE_CLOUD_PROJECT` com o mesmo `GCP_PROJECT_ID` evita avisos
   do cliente BigQuery durante comandos dbt.
 
@@ -88,6 +90,7 @@ for name in (
     "sql/bronze/tables.sql",
     "sql/bronze/staging_tables.sql",
     "sql/ops/ingestion_batches.sql",
+    "sql/ops/dq_results.sql",
 ):
     for statement in Path(name).read_text().split(";"):
         if statement.strip():
@@ -139,6 +142,38 @@ são ignorados pelo Git. Para reconstruir todas as tabelas em `dev`:
 uv run dbt build --project-dir dbt --profiles-dir dbt --target dev --full-refresh
 ```
 
+## Qualidade, auditoria e recuperação (Fase 7)
+
+Com ADC ativo, `.env` carregado e os artefatos do dbt atualizados:
+
+```bash
+set -a; source .env; set +a
+export GOOGLE_CLOUD_PROJECT="$GCP_PROJECT_ID"
+
+uv run dbt test --project-dir dbt --profiles-dir dbt --target dev
+uv run dbt source freshness --project-dir dbt --profiles-dir dbt --target dev
+uv run python -m lakehouse.quality --ingestion-date 2026-11-17
+```
+
+`dbt test` grava falhas em `bronze_dbt_test__audit` quando houver; em uma
+execução sem falhas, as tabelas de auditoria ficam vazias. `dbt source
+freshness` grava `dbt/target/sources.json` com aviso em 72 horas e erro em
+168 horas, medidos por `bronze.*.ingested_at`. O módulo de qualidade lê
+`run_results.json` e `sources.json`, conta linhas na Bronze e na Silver do
+target ativo e grava 12 linhas em `ops.dq_results`.
+
+A escrita usa `load_table_from_json` com `WRITE_TRUNCATE` na partição
+`ops.dq_results$YYYYMMDD`; não usa streaming nem `DELETE`. Reexecutar o
+comando para a mesma data substitui o resumo anterior. O procedimento
+completo de diagnóstico, simulação de falha e retomada está em
+`docs/runbook.md`.
+
+O teste de integração do resumo é opt-in e exige os artefatos do dbt:
+
+```bash
+RUN_DQ_INTEGRATION=1 uv run pytest tests/integration/test_quality_dq.py -q
+```
+
 ## Testes e lint
 
 ```bash
@@ -179,5 +214,8 @@ de faturamento são configurados manualmente; veja
   `MERGE`, estado em `ops` e reexecução idempotente.
 - Fase 6 concluída: dbt pinado, perfis `dev`/`prod`, schemas isolados,
   modelos Silver incrementais, três marts Gold, testes e docs gerados.
+- Fase 7 concluída: `DBT_TARGET` usado no resumo, `store_failures` em
+  `bronze_dbt_test__audit`, freshness na Bronze, DDL e CLI em
+  `ops.dq_results`, testes unitários e integração opt-in de idempotência.
 - `docs/dev/fase1-evolucao.md` registra como estes artefatos serão
   atualizados em cada fase seguinte.

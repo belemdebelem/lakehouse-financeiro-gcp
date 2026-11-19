@@ -850,9 +850,11 @@ Tarefas:
 
 **Parar e pedir aprovação.**
 
-### Fase 7 --- Qualidade, idempotência e recuperação
+### Fase 7 --- Qualidade, idempotência e recuperação (concluída)
 
 **Objetivo:** provar que o pipeline é confiável.
+
+Decisões registradas no ADR 0008.
 
 Tarefas:
 
@@ -876,6 +878,43 @@ Tarefas:
 -   Registros inválidos são contabilizados.
 -   Resultados de testes e freshness ficam rastreáveis por lote.
 -   Testes cobrem os principais cenários positivos e negativos.
+
+**Resultado da execução (2026-11-19):**
+
+-   O Terraform passou a criar `bronze_dbt_test__audit` e a conceder
+    `roles/bigquery.dataEditor` nele à conta de serviço `lakehouse-dbt`.
+    `apply` autorizado: `Apply complete! Resources: 2 added, 0 changed, 0
+    destroyed.`
+-   `dbt_project.yml` configura `store_failures` com
+    `+schema: bronze_dbt_test__audit`. A macro `generate_schema_name`
+    mantém esse nome sem sufixo `_dev` para testes, evitando datasets de
+    auditoria duplicados. As fontes Bronze usam
+    `loaded_at_field: ingested_at` com `warn_after=72h` e
+    `error_after=168h`.
+-   `dbt build` foi reexecutado sem alterações nas contagens. A validação
+    final registrou `PASS=83 WARN=0 ERROR=0` no build e `PASS=77` no
+    `dbt test`; `dbt source freshness` retornou 3 fontes `PASS`, com
+    maior idade de `45.5` horas.
+-   Um teste temporário que forçou falha gravou corretamente em
+    `bronze_dbt_test__audit`. Após removê-lo, o `dbt test` completo deixou
+    77 tabelas de auditoria. O teste temporário e os datasets incorretos
+    `bronze_dbt_test__audit_dev` e `dbt_test__audit_dev` foram removidos.
+-   `sql/ops/dq_results.sql` cria a tabela de resumo particionada por
+    `ingestion_date`. A primeira tentativa com `insert_rows_json` deixou
+    buffer de streaming; a tabela de teste foi recriada a partir do DDL e
+    a escrita final passou a usar `load_table_from_json` com decorador de
+    partição e `WRITE_TRUNCATE`.
+-   `uv run python -m lakehouse.quality --ingestion-date 2026-11-17` foi
+    executado duas vezes: `12 linhas gravadas` nas duas, todas `PASS`.
+    Contagens: clientes `10/10`, contratos `13/13`, parcelas `78/78`,
+    `rejected_count=0`, `dbt_tests_passed=77`, `dbt_tests_failed=0` e
+    freshness máxima `45.5h`.
+-   A simulação com `as_of_date` inválido confirmou que a Silver termina e
+    a Gold falha. A retomada com o valor correto restaurou o build sem
+    limpeza manual nem duplicidade.
+-   Nenhuma dependência Python nova foi adicionada; o módulo usa
+    `google-cloud-bigquery` e stdlib. O procedimento está em
+    `docs/runbook.md`.
 
 **Parar e pedir aprovação.**
 

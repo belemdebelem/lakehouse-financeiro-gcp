@@ -4,6 +4,11 @@ sources:
   - name: bronze
     database: "{{ env_var('GCP_PROJECT_ID') }}"
     schema: "{{ env_var('BQ_DATASET_BRONZE', 'bronze') }}"
+    config:
+      loaded_at_field: ingested_at
+      freshness:
+        warn_after: {count: 72, period: hour}
+        error_after: {count: 168, period: hour}
     tables:
       - name: customers
         description: Clientes sintéticos carregados da Bronze.

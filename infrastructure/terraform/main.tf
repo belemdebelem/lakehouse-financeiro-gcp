@@ -1,5 +1,5 @@
 locals {
-  datasets = toset(["bronze", "silver", "silver_dev", "gold", "gold_dev", "ops"])
+  datasets = toset(["bronze", "bronze_dbt_test__audit", "silver", "silver_dev", "gold", "gold_dev", "ops"])
 }
 
 resource "google_project_service" "serviceusage" {
@@ -121,6 +121,13 @@ resource "google_bigquery_dataset_iam_member" "dbt_bronze_viewer" {
   dataset_id = google_bigquery_dataset.layers["bronze"].dataset_id
   project    = var.project_id
   role       = "roles/bigquery.dataViewer"
+  member     = "serviceAccount:${google_service_account.dbt.email}"
+}
+
+resource "google_bigquery_dataset_iam_member" "dbt_audit_editor" {
+  dataset_id = google_bigquery_dataset.layers["bronze_dbt_test__audit"].dataset_id
+  project    = var.project_id
+  role       = "roles/bigquery.dataEditor"
   member     = "serviceAccount:${google_service_account.dbt.email}"
 }
 

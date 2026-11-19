@@ -70,7 +70,7 @@ de contrato, valores de parcela, data de pagamento e chaves dos marts.
 - Modelos incrementais com contratos precisam declarar `on_schema_change`;
   a opção escolhida foi `fail`, para interromper execuções quando o schema
   mudar.
-- `store_failures`, `dbt source freshness` e `ops.dq_results` permanecem
-  como evoluções previstas para a Fase 7.
+- `store_failures`, `dbt source freshness` e `ops.dq_results` foram
+  implementados na Fase 7; as decisões específicas estão no ADR 0008.
 - A reexecução do mesmo `dbt build` não duplica dados porque a Silver usa
   `merge` e a Gold usa tabelas recreáveis.

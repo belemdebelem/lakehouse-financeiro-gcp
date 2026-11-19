@@ -32,7 +32,7 @@ tarefas "Atualizar os artefatos da Fase 1" listadas no README.
 | 4 | `pyproject.toml`/`uv.lock`, `config.py`, `.env.example`, `tests/`, `docs/dev/setup.md` | `google-cloud-storage`; `GCS_BUCKET_NAME` passa a ser lida; mocks de upload e precondição de geração. |
 | 5 | `pyproject.toml`/`uv.lock`, `config.py`, `.env.example`, `tests/`, `docs/dev/setup.md` | `google-cloud-bigquery`; `BQ_DATASET_*` passam a ser lidas; mocks de carga e metadados de lote. |
 | 6 | `pyproject.toml`/`uv.lock`, `.env.example`, `.gitignore`, `docs/dev/setup.md` | `dbt-core` e `dbt-bigquery` pinados juntos; variáveis do dbt; ignorar `target/`, `dbt_packages/` e `logs/`. |
-| 7 | `tests/`, `docs/dev/setup.md` | Testes dbt de qualidade/idempotência e comandos de freshness; nenhuma dependência nova sem justificativa. |
+| 7 | `config.py`, `tests/`, `docs/dev/setup.md` | `DBT_TARGET` passa a ser lido por `Settings`; testes unitários de parse/agregação/escrita e integração opt-in de idempotência; comandos de freshness e qualidade documentados. Nenhuma dependência nova. |
 | 8 | `pyproject.toml`/`uv.lock`, `.gitignore`, `docs/dev/setup.md` | `sqlfluff` no extra `dev`; configuração de Gitleaks/Checkov e pre-commit; artefatos de CI. |
 | 9 | `pyproject.toml`/`uv.lock`, `config.py`, `.env.example`, `tests/`, `docs/dev/setup.md` | Cliente de Cloud Logging se necessário; `LOG_LEVEL` já existe; logs estruturados e testes com mocks. |
 | 10 | `README.md`, `docs/dev/setup.md` | README público, `docs/spec.md` e instruções finais de execução/limpeza. |
@@ -55,5 +55,10 @@ passaram a ser lidas, DDL versionado criado e testes com mocks de carga,
 metadados de lote e idempotência incluídos. Fase 6 executada em
 2026-11-19: `dbt-core` e `dbt-bigquery` pinados, `DBT_TARGET` documentado,
 artefatos dbt adicionados ao `.gitignore` e `docs/dev/setup.md`
-atualizado com parse/compile/build/docs. As demais atualizações listadas
-são executadas dentro da fase correspondente.
+atualizado com parse/compile/build/docs. Fase 7 executada em 2026-11-19:
+`Settings.dbt_target` passou a ser usada pelo resumo de qualidade,
+`tests/unit/test_quality.py` cobre parsing, contagens, agregação e escrita
+particionada, `tests/integration/test_quality_dq.py` valida idempotência no
+BigQuery e `docs/dev/setup.md` documenta freshness, auditoria e qualidade.
+As demais atualizações listadas são executadas dentro da fase
+correspondente.

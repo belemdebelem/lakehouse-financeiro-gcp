@@ -1,4 +1,4 @@
-"""Configurações mínimas do projeto (Fases 1, 4 e 5)."""
+"""Configurações mínimas do projeto (Fases 1, 4, 5 e 7)."""
 
 from __future__ import annotations
 
@@ -18,6 +18,7 @@ class Settings:
     bq_dataset_ops: str
     pipeline_name: str
     log_level: str
+    dbt_target: str = "dev"
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -32,4 +33,5 @@ class Settings:
             bq_dataset_ops=os.getenv("BQ_DATASET_OPS", "ops"),
             pipeline_name=os.getenv("PIPELINE_NAME", "lakehouse-financeiro"),
             log_level=os.getenv("LOG_LEVEL", "INFO"),
+            dbt_target=os.getenv("DBT_TARGET", "dev"),
         )

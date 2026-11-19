@@ -1,4 +1,4 @@
-# Terraform do MVP (Fases 3 e 6)
+# Terraform do MVP (Fases 3, 6 e 7)
 
 ## Recursos versionados
 
@@ -7,9 +7,10 @@
 - GCS: um bucket regional Standard para Landing/Raw, com acesso uniforme,
   prevenção de acesso público, versionamento desligado e retenção de 30
   dias para dados de demonstração.
-- BigQuery: datasets `bronze`, `silver`, `silver_dev`, `gold`, `gold_dev` e
-  `ops` na mesma região do bucket. Os datasets `*_dev` isolam as execuções
-  locais do dbt na Fase 6.
+- BigQuery: datasets `bronze`, `bronze_dbt_test__audit`, `silver`,
+  `silver_dev`, `gold`, `gold_dev` e `ops` na mesma região do bucket. Os
+  datasets `*_dev` isolam as execuções locais do dbt na Fase 6; o dataset de
+  auditoria guarda falhas dos testes na Fase 7.
 - IAM: duas contas de serviço separadas — `lakehouse-pipeline` e
   `lakehouse-dbt`.
 - Nenhum Cloud Scheduler, Composer, Dataflow, bucket de state ou serviço
@@ -51,7 +52,7 @@ GitHub Actions; veja `docs/decisions/0005-estado-local-terraform.md`.
 | Identidade | Permissões concedidas |
 |---|---|
 | `lakehouse-pipeline` | `storage.objectCreator` e `storage.objectViewer` no bucket; `bigquery.jobUser` no projeto; `bigquery.dataEditor` em `bronze` e `ops`. |
-| `lakehouse-dbt` | `bigquery.jobUser` no projeto; `bigquery.dataViewer` em `bronze`; `bigquery.dataEditor` em `silver`, `silver_dev`, `gold`, `gold_dev` e `ops`. |
+| `lakehouse-dbt` | `bigquery.jobUser` no projeto; `bigquery.dataViewer` em `bronze`; `bigquery.dataEditor` em `bronze_dbt_test__audit`, `silver`, `silver_dev`, `gold`, `gold_dev` e `ops`. |
 | Usuário local via ADC | Permissões administrativas necessárias para `plan`/`apply`, fora do Terraform e fora do repositório. |
 | CI/deploy (Fase 8) | Identidade separada via Workload Identity Federation; papéis mínimos serão definidos quando o CD existir. |
 

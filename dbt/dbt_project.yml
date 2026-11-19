@@ -17,6 +17,10 @@ vars:
   as_of_date: "2026-01-31"
   late_arrival_days: 3
 
+data_tests:
+  +store_failures: true
+  +schema: bronze_dbt_test__audit
+
 models:
   lakehouse_financeiro:
     silver:

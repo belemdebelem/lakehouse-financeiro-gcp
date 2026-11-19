@@ -17,11 +17,16 @@ flowchart LR
     BQLOAD --> BR[BigQuery: bronze]
     BR --> SI[BigQuery: silver via dbt]
     SI --> GO[BigQuery: gold via dbt]
+    GO --> DQ[Python: resumo de qualidade]
+    DQ --> OPS[BigQuery: ops.dq_results]
+    SI -. store_failures .-> AUD[BigQuery: bronze_dbt_test__audit]
 
     TF[Terraform] -. provisiona .-> GCS
     TF -. provisiona .-> BR
     TF -. provisiona .-> SI
     TF -. provisiona .-> GO
+    TF -. provisiona .-> OPS
+    TF -. provisiona .-> AUD
     PY -. logs estruturados .-> LOG[Cloud Logging]
     LOG -. alerta de falha .-> MON[Cloud Monitoring]
     GH[GitHub Actions: CI, dbt build e verificações] -. OIDC/WIF .-> GCP[GCP]
@@ -33,16 +38,18 @@ flowchart LR
 |---|---|---|
 | Landing/Raw | GCS | CSV de origem preservados, identificados por entidade, data e lote. |
 | Bronze | BigQuery | Linhas carregadas próximas à origem, com `batch_id`, `source_file` e `ingested_at`. |
-| Silver | BigQuery + dbt | Tipos padronizados, deduplicação determinística, validações e contratos enforcement; contagem de rejeitados prevista para a Fase 7. |
+| Silver | BigQuery + dbt | Tipos padronizados, deduplicação determinística, validações e contratos enforcement; diferenças de contagem resumidas em `ops.dq_results`. |
 | Gold | BigQuery + dbt | Indicadores pequenos voltados às perguntas analíticas abaixo. |
 | Transformação | dbt-core | Modelos SQL versionados, testes, contratos, docs e lineage. |
-| Operação | BigQuery `ops` | Estado de lote (`STARTED`, `SUCCEEDED`, `FAILED`) e contagens em `ops.ingestion_batches`. |
+| Auditoria dbt | BigQuery | Resultados de falhas em `bronze_dbt_test__audit.*`, substituídos a cada execução do teste. |
+| Operação | BigQuery `ops` | Estado de lote (`STARTED`, `SUCCEEDED`, `FAILED`) em `ops.ingestion_batches` e resumo por entidade/métrica em `ops.dq_results`. |
 
 O pipeline Python valida arquivos, calcula checksum e identidade estável
 do lote, envia arquivos ao GCS e dispara cargas batch na Bronze. O
 dbt-core executa as transformações Silver e Gold com modelos
-versionados, testes e lineage. A repetição do mesmo arquivo mantém o
-mesmo `batch_id` e deve ser idempotente.
+versionados, testes e lineage. O módulo de qualidade lê os artefatos do
+dbt, conta linhas por entidade e grava o resumo em `ops`. A repetição do
+mesmo arquivo mantém o mesmo `batch_id` e é idempotente.
 
 ## Carga Bronze
 
@@ -74,18 +81,22 @@ mesmo `batch_id` e deve ser idempotente.
   por `updated_at`, `ingested_at` e `source_file`. Contratos são
   enforcement na Silver; modelos Gold usam `table` sem contrato
   enforcement nesta fase.
-- `generate_schema_name` isola `dev` em `silver_dev`/`gold_dev`; somente o
-  target `prod` grava em `silver`/`gold`. Terraform cria os datasets de
-  desenvolvimento e concede `roles/bigquery.dataEditor` à conta de
-  serviço `lakehouse-dbt`.
+- `generate_schema_name` isola `dev` em `silver_dev`/`gold_dev`; a exceção
+  para schemas de teste terminados em `_dbt_test__audit` mantém o nome
+  `bronze_dbt_test__audit` sem sufixo. Somente o target `prod` grava em
+  `silver`/`gold`. Terraform cria os datasets de desenvolvimento e de
+  auditoria e concede `roles/bigquery.dataEditor` à conta de serviço
+  `lakehouse-dbt`.
 - A data de referência analítica é `2026-01-31`.
   `mart_carteira_credito` usa principal original de contratos
   `active`/`closed` com cobertura no fim do mês;
   `mart_inadimplencia` agrupa parcelas vencidas e não pagas até a data de
   referência; `fato_pagamentos` consolida parcelas pagas.
 - Testes genéricos e singulares cobrem chaves, domínios, datas, valores e
-  relacionamentos. `store_failures`, `dbt source freshness` e
-  `ops.dq_results` são evoluções previstas para a Fase 7.
+  relacionamentos. `store_failures` persiste falhas em
+  `bronze_dbt_test__audit`; `dbt source freshness` valida a Bronze com
+  limites de 72h/168h; `ops.dq_results` resume contagens, testes e
+  freshness por data de ingestão.
 - `dbt docs generate` gera catálogo e lineage locais em `dbt/target/`.
 - `profiles.yml` não contém segredos; usa `env_var`, ADC local e WIF/ADC
   no GitHub Actions.
@@ -114,10 +125,10 @@ mesmo `batch_id` e deve ser idempotente.
 - Não gerar CPF, nome, endereço, conta bancária, credenciais ou valores
   obtidos de operações reais.
 
-## Recursos GCP propostos
+## Recursos GCP implantados
 
 - Projeto GCP dedicado ao portfólio, com faturamento já associado; o
-  `project_id` será fornecido antes da Fase 3.
+  `project_id` é fornecido pelo ambiente local e pelo `terraform.tfvars`.
 - Região proposta: `southamerica-east1` (São Paulo), usando a mesma
   localização para o bucket e os datasets para reduzir transferências
   entre regiões e manter os dados perto do usuário.
@@ -125,10 +136,12 @@ mesmo `batch_id` e deve ser idempotente.
   prevenção de acesso público e limpeza curta dos dados de demonstração.
   Versionamento de objetos fica desligado; a aplicação evita
   sobrescritas com precondição de geração.
-- Datasets BigQuery `bronze`, `silver`, `gold`, `ops`, `silver_dev` e
-  `gold_dev` na região do bucket. Os dois últimos isolam execuções dbt de
-  desenvolvimento. Cargas batch; consultas sob demanda com limite de
-  bytes processados; sem reservas de slots.
+- Datasets BigQuery `bronze`, `bronze_dbt_test__audit`, `silver`,
+  `silver_dev`, `gold`, `gold_dev` e `ops` na região do bucket. Os datasets
+  `*_dev` isolam execuções dbt de desenvolvimento; o dataset de auditoria
+  separa falhas de testes dos dados de negócio. A conta `lakehouse-dbt`
+  também tem `dataEditor` no dataset de auditoria. Cargas batch; consultas
+  sob demanda com limite de bytes processados; sem reservas de slots.
 - dbt-core roda localmente e no GitHub Actions; não há serviço GCP
   adicional nem custo de licença. O custo é o tempo de CI e os bytes
   processados no BigQuery.
@@ -193,3 +206,4 @@ APIs bancárias reais e dados pessoais reais.
 - [ADR 0005 — State local do Terraform no MVP](decisions/0005-estado-local-terraform.md)
 - [ADR 0006 — Carga Bronze idempotente](decisions/0006-carga-bronze-idempotente.md)
 - [ADR 0007 — Modelagem dbt Silver e Gold com isolamento por target](decisions/0007-modelagem-dbt-silver-gold.md)
+- [ADR 0008 — Qualidade, auditoria de testes e recuperação](decisions/0008-qualidade-auditoria-recuperacao.md)

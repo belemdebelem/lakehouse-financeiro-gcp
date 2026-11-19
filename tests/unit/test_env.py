@@ -15,6 +15,7 @@ def test_settings_from_env_defaults(monkeypatch):
         monkeypatch.delenv(variable, raising=False)
     monkeypatch.delenv("PIPELINE_NAME", raising=False)
     monkeypatch.delenv("LOG_LEVEL", raising=False)
+    monkeypatch.delenv("DBT_TARGET", raising=False)
 
     settings = Settings.from_env()
 
@@ -28,6 +29,7 @@ def test_settings_from_env_defaults(monkeypatch):
     assert settings.bq_dataset_ops == "ops"
     assert settings.pipeline_name == "lakehouse-financeiro"
     assert settings.log_level == "INFO"
+    assert settings.dbt_target == "dev"
 
 
 def test_settings_from_env_overrides(monkeypatch):
@@ -38,6 +40,7 @@ def test_settings_from_env_overrides(monkeypatch):
     monkeypatch.setenv("BQ_DATASET_OPS", "ops_teste")
     monkeypatch.setenv("PIPELINE_NAME", "demo")
     monkeypatch.setenv("LOG_LEVEL", "DEBUG")
+    monkeypatch.setenv("DBT_TARGET", "prod")
 
     settings = Settings.from_env()
 
@@ -47,3 +50,4 @@ def test_settings_from_env_overrides(monkeypatch):
     assert settings.bq_dataset_ops == "ops_teste"
     assert settings.pipeline_name == "demo"
     assert settings.log_level == "DEBUG"
+    assert settings.dbt_target == "prod"
