@@ -777,11 +777,11 @@ evitar streaming e consultas exploratórias amplas.
 
 **Parar e pedir aprovação.**
 
-### Fase 6 --- Transformações dbt: Silver e Gold
+### Fase 6 --- Transformações dbt: Silver e Gold (concluída)
 
 **Objetivo:** implementar ELT no BigQuery com dbt-core.
 
-Decisão registrada no ADR 0002.
+Decisões registradas nos ADRs 0002 e 0007.
 
 Tarefas:
 
@@ -815,6 +815,38 @@ Tarefas:
 -   Tabelas Gold respondem às perguntas analíticas definidas.
 -   `dbt docs` e lineage gerados.
 -   Consultas consideram custo e particionamento.
+
+**Resultado da execução (2026-11-19):**
+
+-   `dbt-core==1.12.6` e `dbt-bigquery==1.12.3` foram adicionados e fixados
+    juntos no `pyproject.toml`/`uv.lock`. Nenhum dbt package externo foi
+    adicionado.
+-   O projeto dbt foi criado em `dbt/` com `dbt_project.yml`, `profiles.yml`
+    sem segredos, `sources.yml` para as três tabelas da Bronze, macro
+    `generate_schema_name`, modelos Silver/Gold, documentação de colunas e
+    testes genéricos/singulares.
+-   O Terraform passou a criar `silver_dev` e `gold_dev` e a conceder
+    `roles/bigquery.dataEditor` na conta de serviço `lakehouse-dbt`.
+    `apply` autorizado: `Apply complete! Resources: 4 added, 0 changed, 0
+    destroyed.`
+-   Modelos Silver usam `merge`, `unique_key`, partição por `updated_at`,
+    clustering, janela de 3 dias para atraso e deduplicação
+    determinística. Contratos são enforcement apenas na Silver, com
+    `on_schema_change: fail`.
+-   A data de referência analítica é `2026-01-31`.
+    `mart_carteira_credito` considera contratos `active`/`closed` com
+    cobertura no fim do mês; `mart_inadimplencia` considera parcelas
+    vencidas e não pagas até a data de referência; `fato_pagamentos`
+    consolida parcelas com `paid_at` preenchido.
+-   `dbt parse`, `dbt compile`, `dbt build --full-refresh` e
+    `dbt docs generate` passaram em `dev`. Resultado: `PASS=83 WARN=0
+    ERROR=0 SKIP=0` (6 modelos e 77 testes).
+-   Contagens conferidas: `silver_dev.silver_customers` 10,
+    `silver_dev.silver_contracts` 13, `silver_dev.silver_installments` 78,
+    `gold_dev.mart_carteira_credito` 38,
+    `gold_dev.mart_inadimplencia` 13 e `gold_dev.fato_pagamentos` 61.
+-   `store_failures`, `dbt source freshness` e `ops.dq_results` ficaram
+    explicitamente adiados para a Fase 7.
 
 **Parar e pedir aprovação.**
 

@@ -1,0 +1,32 @@
+name: lakehouse_financeiro
+version: 1.0.0
+config-version: 2
+require-dbt-version: [">=1.12.0", "<2.0.0"]
+profile: lakehouse_financeiro
+
+model-paths: ["models"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+  - "logs"
+
+vars:
+  as_of_date: "2026-01-31"
+  late_arrival_days: 3
+
+models:
+  lakehouse_financeiro:
+    silver:
+      +schema: "{{ env_var('BQ_DATASET_SILVER', 'silver') }}"
+      +materialized: incremental
+      +incremental_strategy: merge
+      +on_schema_change: fail
+      +partition_by:
+        field: updated_at
+        data_type: timestamp
+    gold:
+      +schema: "{{ env_var('BQ_DATASET_GOLD', 'gold') }}"
+      +materialized: table

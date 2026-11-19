@@ -1,4 +1,4 @@
-# Setup e execução local (Fases 1 a 5 — concluídas)
+# Setup e execução local (Fases 1 a 6 — concluídas)
 
 ## Pré-requisitos
 
@@ -32,7 +32,11 @@ mesmas versões do lockfile.
 - Autenticação GCP local: `gcloud auth application-default login`. Não
   usar chaves JSON de service account no repositório.
 - `GCS_BUCKET_NAME` é lido pela ingestão da Fase 4; `BQ_DATASET_*` são
-  lidos pela carga da Fase 5.
+  lidos pela carga da Fase 5 e pelo dbt na Fase 6.
+- `DBT_TARGET` seleciona o perfil do dbt; o padrão é `dev`. `prod` grava
+  em `silver`/`gold`; `dev` grava em `silver_dev`/`gold_dev`.
+- Definir `GOOGLE_CLOUD_PROJECT` com o mesmo `GCP_PROJECT_ID` evita avisos
+  do cliente BigQuery durante comandos dbt.
 
 ## Dados sintéticos (Fase 2)
 
@@ -111,6 +115,30 @@ O teste de integração controlado contra o BigQuery usa a data
 RUN_BQ_INTEGRATION=1 uv run pytest tests/integration/test_bigquery_load.py -q
 ```
 
+## Transformações dbt (Fase 6)
+
+As dependências `dbt-core==1.12.6` e `dbt-bigquery==1.12.3` vêm do
+`pyproject.toml`/`uv.lock`. `profiles.yml` usa ADC e `env_var`, sem
+segredos. Com o `.env` carregado e ADC ativo:
+
+```bash
+set -a; source .env; set +a
+export GOOGLE_CLOUD_PROJECT="$GCP_PROJECT_ID"
+
+uv run dbt parse --project-dir dbt --profiles-dir dbt --target dev
+uv run dbt compile --project-dir dbt --profiles-dir dbt --target dev
+uv run dbt build --project-dir dbt --profiles-dir dbt --target dev
+uv run dbt docs generate --project-dir dbt --profiles-dir dbt --target dev
+```
+
+Use `DBT_TARGET=prod` apenas quando a gravação em `silver`/`gold` for
+intencional. Artefatos em `dbt/target/`, `dbt/logs/` e `dbt/dbt_packages/`
+são ignorados pelo Git. Para reconstruir todas as tabelas em `dev`:
+
+```bash
+uv run dbt build --project-dir dbt --profiles-dir dbt --target dev --full-refresh
+```
+
 ## Testes e lint
 
 ```bash
@@ -149,5 +177,7 @@ de faturamento são configurados manualmente; veja
   não sobrescrita e testes com client fake.
 - Fase 5 concluída: DDL versionado, carga GCS → staging → Bronze com
   `MERGE`, estado em `ops` e reexecução idempotente.
+- Fase 6 concluída: dbt pinado, perfis `dev`/`prod`, schemas isolados,
+  modelos Silver incrementais, três marts Gold, testes e docs gerados.
 - `docs/dev/fase1-evolucao.md` registra como estes artefatos serão
   atualizados em cada fase seguinte.

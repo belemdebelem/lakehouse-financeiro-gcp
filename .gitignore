@@ -25,6 +25,12 @@ venv/
 *credentials*.json
 *service-account*.json
 
+# dbt
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
+dbt/.user.yml
+
 # Terraform
 *.tfstate
 *.tfstate.*

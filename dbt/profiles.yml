@@ -1,0 +1,19 @@
+lakehouse_financeiro:
+  target: "{{ env_var('DBT_TARGET', 'dev') }}"
+  outputs:
+    dev:
+      type: bigquery
+      method: oauth
+      project: "{{ env_var('GCP_PROJECT_ID') }}"
+      dataset: "{{ env_var('BQ_DATASET_BRONZE', 'bronze') }}"
+      location: "{{ env_var('GCP_REGION', 'southamerica-east1') }}"
+      threads: 2
+      maximum_bytes_billed: 1000000000
+    prod:
+      type: bigquery
+      method: oauth
+      project: "{{ env_var('GCP_PROJECT_ID') }}"
+      dataset: "{{ env_var('BQ_DATASET_BRONZE', 'bronze') }}"
+      location: "{{ env_var('GCP_REGION', 'southamerica-east1') }}"
+      threads: 4
+      maximum_bytes_billed: 2000000000

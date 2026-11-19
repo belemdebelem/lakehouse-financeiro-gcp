@@ -25,8 +25,9 @@ ponto.
   domínios inválidos, contrato sem cliente, parcela sem contrato,
   `end_date` anterior a `start_date` e `amount_paid` maior que
   `amount_due`.
-- Regras analíticas e testes do dbt permanecem previstos para as Fases 6
-  e 7; a validação Python desta fase é apenas estrutural.
+- Regras analíticas e testes do dbt foram implementados na Fase 6;
+  `store_failures`, `source freshness` e persistência de resultados ficam
+  para a Fase 7. A validação Python desta fase é apenas estrutural.
 
 ## `customers` — clientes fictícios
 
@@ -131,6 +132,31 @@ Terraform.
 O lote de `2026-11-17` carregou 10 clientes, 13 contratos e 78 parcelas;
 as três entradas em `ops.ingestion_batches` estão `SUCCEEDED`.
 
+## Modelos Silver e Gold (Fase 6)
+
+Projetos dbt ficam em `dbt/`. O target `prod` grava em `silver` e `gold`;
+outros targets, como `dev`, gravam em `silver_dev` e `gold_dev` pela macro
+`generate_schema_name`. A data de referência padrão é `2026-01-31`,
+configurada em `vars.as_of_date`.
+
+| Modelo | Camada | Granularidade / regra principal |
+|---|---|---|
+| `silver_customers` | Silver | Uma linha por `customer_id`; `customer_segment` em minúsculas, deduplicação por `updated_at`, `ingested_at` e `source_file`. |
+| `silver_contracts` | Silver | Uma linha por `contract_id`; `product_type` e `status` normalizados; deduplicação determinística. |
+| `silver_installments` | Silver | Uma linha por (`contract_id`, `installment_number`); `status` normalizado e deduplicação determinística. |
+| `mart_carteira_credito` | Gold | (`reference_month`, `product_type`): principal original somado de contratos `active`/`closed` cujo intervalo cobre o fim do mês. |
+| `mart_inadimplencia` | Gold | (`due_month`, `product_type`): parcelas com vencimento anterior à data de referência, sem pagamento integral até essa data e status `open`/`overdue`. |
+| `fato_pagamentos` | Gold | (`contract_id`, `installment_number`): pagamentos com `paid_at` preenchido, com mês de pagamento e dias até/atraso em relação ao vencimento. |
+
+Modelos Silver são incrementais com `merge`, partição por `updated_at`,
+clustering e janela de segurança de 3 dias para dados atrasados. Contratos
+de modelo são enforcement apenas na Silver, com `on_schema_change: fail`.
+Modelos Gold são tabelas recreáveis.
+
+O build em `dev` produziu: `silver_customers` 10, `silver_contracts` 13,
+`silver_installments` 78, `mart_carteira_credito` 38,
+`mart_inadimplencia` 13 e `fato_pagamentos` 61 linhas.
+
 ## Mapeamento para dbt
 
 | Bronze (source) | Modelo Silver | Uso principal |
@@ -142,18 +168,20 @@ as três entradas em `ops.ingestion_batches` estão `SUCCEEDED`.
 Os modelos Gold do MVP são `mart_carteira_credito`, `mart_inadimplencia`
 e `fato_pagamentos`, construídos a partir dos modelos Silver.
 
-## Testes dbt previstos
+## Testes dbt implementados (Fase 6)
 
 | Alvo | Teste |
 |---|---|
+| Fontes Bronze | `not_null` e `unique` nas chaves de `customers`, `contracts` e `installments` |
 | `silver_customers.customer_id` | `unique`, `not_null` |
 | `silver_contracts.contract_id` | `unique`, `not_null` |
 | `silver_contracts.customer_id` | `relationships` para `silver_customers` |
-| `silver_installments` | `not_null` nas chaves e teste singular de unicidade composta |
+| `silver_installments` | `not_null`, `accepted_values`, teste singular de unicidade composta e validade de valores |
 | `silver_installments.contract_id` | `relationships` para `silver_contracts` |
 | `customer_segment`, `product_type`, `status` | `accepted_values` |
-| Datas e valores | testes singulares |
-| Bronze | `dbt source freshness` usando `ingested_at` |
+| Datas e valores | `assert_contract_dates_consistent`, `assert_paid_at_after_contract_start` e `assert_installment_amounts_valid` |
+| Chaves dos marts | `assert_unique_mart_carteira_credito_key`, `assert_unique_mart_inadimplencia_key` e `assert_unique_fato_pagamentos_key` |
+| Bronze | `dbt source freshness` usando `ingested_at`: previsto para a Fase 7 |
 
 ## Regras iniciais de qualidade
 
@@ -162,15 +190,16 @@ e `fato_pagamentos`, construídos a partir dos modelos Silver.
 - Datas coerentes: `end_date > start_date`; pagamento não ocorre antes
   do contrato; valores são não negativos e parcelas não ultrapassam o
   valor devido.
-- Parcelas sem contrato e contratos sem cliente são contabilizados como
-  inválidos/rejeitados; nenhum registro inválido é descartado em
-  silêncio.
-- Regra da inadimplência: parcela vencida na data de referência, sem
-  pagamento integral até essa data. A regra exata será implementada e
-  testada na fase de transformações.
+- Parcelas sem contrato e contratos sem cliente são detectados por testes
+  de relacionamento; contabilização em tabela de rejeitados está prevista
+  para a Fase 7. Nenhum registro inválido é descartado em silêncio.
+- Regra da inadimplência implementada: parcela com vencimento anterior à
+  data de referência, sem pagamento integral até essa data e com status
+  `open` ou `overdue`.
 - Exclusões não são inferidas pela ausência de um registro em um arquivo.
-- Os testes serão implementados no dbt; falhas serão persistidas com
-  `store_failures` e resumidas em `ops.dq_results`.
+- Os testes estão implementados no dbt. Persistência de falhas com
+  `store_failures` e resumo em `ops.dq_results` estão previstos para a
+  Fase 7.
 
 ## Limites assumidos
 

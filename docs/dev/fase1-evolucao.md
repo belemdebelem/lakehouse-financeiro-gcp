@@ -52,5 +52,8 @@ Status: Fase 1 concluída em 2026-11-17. Fase 4 executada em 2026-11-17:
 os testes com mocks de upload/precondição foram incluídos. Fase 5
 executada em 2026-11-17: `google-cloud-bigquery` adicionado, `BQ_DATASET_*`
 passaram a ser lidas, DDL versionado criado e testes com mocks de carga,
-metadados de lote e idempotência incluídos. As demais atualizações
-listadas são executadas dentro da fase correspondente.
+metadados de lote e idempotência incluídos. Fase 6 executada em
+2026-11-19: `dbt-core` e `dbt-bigquery` pinados, `DBT_TARGET` documentado,
+artefatos dbt adicionados ao `.gitignore` e `docs/dev/setup.md`
+atualizado com parse/compile/build/docs. As demais atualizações listadas
+são executadas dentro da fase correspondente.

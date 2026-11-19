@@ -33,7 +33,7 @@ flowchart LR
 |---|---|---|
 | Landing/Raw | GCS | CSV de origem preservados, identificados por entidade, data e lote. |
 | Bronze | BigQuery | Linhas carregadas próximas à origem, com `batch_id`, `source_file` e `ingested_at`. |
-| Silver | BigQuery + dbt | Tipos padronizados, deduplicação determinística, validações e dados rejeitados contabilizados. |
+| Silver | BigQuery + dbt | Tipos padronizados, deduplicação determinística, validações e contratos enforcement; contagem de rejeitados prevista para a Fase 7. |
 | Gold | BigQuery + dbt | Indicadores pequenos voltados às perguntas analíticas abaixo. |
 | Transformação | dbt-core | Modelos SQL versionados, testes, contratos, docs e lineage. |
 | Operação | BigQuery `ops` | Estado de lote (`STARTED`, `SUCCEEDED`, `FAILED`) e contagens em `ops.ingestion_batches`. |
@@ -64,18 +64,31 @@ mesmo `batch_id` e deve ser idempotente.
 
 ## Transformações com dbt
 
-- dbt-core + dbt-bigquery processam Silver e Gold; a Bronze é carregada
-  pelo Python.
+- dbt-core `1.12.6` + dbt-bigquery `1.12.3` processam Silver e Gold; a
+  Bronze é carregada pelo Python. As versões são fixadas juntas no
+  `pyproject.toml` e no `uv.lock`; não há dbt packages externos.
 - `sources.yml` aponta para `bronze.customers`, `bronze.contracts` e
   `bronze.installments`.
-- Modelos Silver são incrementais com `merge`, `unique_key`,
-  particionamento, clustering e janela de segurança para dados que
-  chegam atrasados; modelos Gold usam a materialização adequada a cada
-  pergunta analítica.
-- Testes genéricos e singulares, `store_failures`, `source freshness`,
-  contratos nos marts e `dbt docs` fazem parte do fluxo.
-- `profiles.yml` não contém segredos; usa ADC local e WIF/ADC no GitHub
-  Actions.
+- Modelos Silver são incrementais com `merge`, `unique_key`, partição por
+  `updated_at`, clustering, janela de segurança de 3 dias e deduplicação
+  por `updated_at`, `ingested_at` e `source_file`. Contratos são
+  enforcement na Silver; modelos Gold usam `table` sem contrato
+  enforcement nesta fase.
+- `generate_schema_name` isola `dev` em `silver_dev`/`gold_dev`; somente o
+  target `prod` grava em `silver`/`gold`. Terraform cria os datasets de
+  desenvolvimento e concede `roles/bigquery.dataEditor` à conta de
+  serviço `lakehouse-dbt`.
+- A data de referência analítica é `2026-01-31`.
+  `mart_carteira_credito` usa principal original de contratos
+  `active`/`closed` com cobertura no fim do mês;
+  `mart_inadimplencia` agrupa parcelas vencidas e não pagas até a data de
+  referência; `fato_pagamentos` consolida parcelas pagas.
+- Testes genéricos e singulares cobrem chaves, domínios, datas, valores e
+  relacionamentos. `store_failures`, `dbt source freshness` e
+  `ops.dq_results` são evoluções previstas para a Fase 7.
+- `dbt docs generate` gera catálogo e lineage locais em `dbt/target/`.
+- `profiles.yml` não contém segredos; usa `env_var`, ADC local e WIF/ADC
+  no GitHub Actions.
 - dbt não orquestra: o pipeline Python e o GitHub Actions controlam a
   ordem ingestão → Bronze → `dbt build`.
 - dbt Cloud, Semantic Layer e Mesh ficam fora do MVP.
@@ -112,9 +125,10 @@ mesmo `batch_id` e deve ser idempotente.
   prevenção de acesso público e limpeza curta dos dados de demonstração.
   Versionamento de objetos fica desligado; a aplicação evita
   sobrescritas com precondição de geração.
-- Datasets BigQuery `bronze`, `silver`, `gold` e `ops` na região do
-  bucket. Cargas batch; consultas sob demanda com limite de bytes
-  processados; sem reservas de slots.
+- Datasets BigQuery `bronze`, `silver`, `gold`, `ops`, `silver_dev` e
+  `gold_dev` na região do bucket. Os dois últimos isolam execuções dbt de
+  desenvolvimento. Cargas batch; consultas sob demanda com limite de
+  bytes processados; sem reservas de slots.
 - dbt-core roda localmente e no GitHub Actions; não há serviço GCP
   adicional nem custo de licença. O custo é o tempo de CI e os bytes
   processados no BigQuery.
@@ -178,3 +192,4 @@ APIs bancárias reais e dados pessoais reais.
 - [ADR 0004 — Segurança automatizada mínima](decisions/0004-seguranca-automatizada-minima.md)
 - [ADR 0005 — State local do Terraform no MVP](decisions/0005-estado-local-terraform.md)
 - [ADR 0006 — Carga Bronze idempotente](decisions/0006-carga-bronze-idempotente.md)
+- [ADR 0007 — Modelagem dbt Silver e Gold com isolamento por target](decisions/0007-modelagem-dbt-silver-gold.md)

@@ -1,0 +1,141 @@
+version: 2
+
+models:
+  - name: silver_customers
+    description: Clientes padronizados e deduplicados da Bronze.
+    columns:
+      - name: customer_id
+        description: Chave técnica estável do cliente.
+        data_type: string
+        tests: [unique, not_null]
+      - name: customer_segment
+        description: Segmento do cliente em minúsculas.
+        data_type: string
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['mass', 'affluent', 'business']
+      - name: created_at
+        data_type: date
+        tests: [not_null]
+      - name: updated_at
+        data_type: timestamp
+        tests: [not_null]
+      - name: batch_id
+        data_type: string
+        tests: [not_null]
+      - name: source_file
+        data_type: string
+        tests: [not_null]
+      - name: ingested_at
+        data_type: timestamp
+        tests: [not_null]
+      - name: ingestion_date
+        data_type: date
+        tests: [not_null]
+
+  - name: silver_contracts
+    description: Contratos padronizados, deduplicados e validados da Bronze.
+    columns:
+      - name: contract_id
+        description: Chave técnica estável do contrato.
+        data_type: string
+        tests: [unique, not_null]
+      - name: customer_id
+        data_type: string
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('silver_customers')
+                field: customer_id
+      - name: product_type
+        data_type: string
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['personal_loan', 'auto_loan']
+      - name: principal_amount
+        data_type: numeric(38,9)
+        tests: [not_null]
+      - name: annual_interest_rate
+        data_type: numeric(38,9)
+        tests: [not_null]
+      - name: start_date
+        data_type: date
+        tests: [not_null]
+      - name: end_date
+        data_type: date
+        tests: [not_null]
+      - name: status
+        data_type: string
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['active', 'closed', 'cancelled']
+      - name: updated_at
+        data_type: timestamp
+        tests: [not_null]
+      - name: batch_id
+        data_type: string
+        tests: [not_null]
+      - name: source_file
+        data_type: string
+        tests: [not_null]
+      - name: ingested_at
+        data_type: timestamp
+        tests: [not_null]
+      - name: ingestion_date
+        data_type: date
+        tests: [not_null]
+
+  - name: silver_installments
+    description: Parcelas padronizadas, deduplicadas e validadas da Bronze.
+    columns:
+      - name: contract_id
+        data_type: string
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('silver_contracts')
+                field: contract_id
+      - name: installment_number
+        data_type: int64
+        tests: [not_null]
+      - name: due_date
+        data_type: date
+        tests: [not_null]
+      - name: paid_at
+        data_type: date
+      - name: amount_due
+        data_type: numeric(38,9)
+        tests: [not_null]
+      - name: amount_paid
+        data_type: numeric(38,9)
+        tests: [not_null]
+      - name: status
+        data_type: string
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['open', 'paid', 'overdue']
+      - name: updated_at
+        data_type: timestamp
+        tests: [not_null]
+      - name: batch_id
+        data_type: string
+        tests: [not_null]
+      - name: source_file
+        data_type: string
+        tests: [not_null]
+      - name: ingested_at
+        data_type: timestamp
+        tests: [not_null]
+      - name: ingestion_date
+        data_type: date
+        tests: [not_null]

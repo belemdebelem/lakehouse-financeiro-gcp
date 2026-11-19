@@ -1,0 +1,87 @@
+version: 2
+
+sources:
+  - name: bronze
+    database: "{{ env_var('GCP_PROJECT_ID') }}"
+    schema: "{{ env_var('BQ_DATASET_BRONZE', 'bronze') }}"
+    tables:
+      - name: customers
+        description: Clientes sintéticos carregados da Bronze.
+        columns:
+          - name: customer_id
+            data_type: string
+            tests: [unique, not_null]
+          - name: customer_segment
+            data_type: string
+          - name: created_at
+            data_type: date
+          - name: updated_at
+            data_type: timestamp
+          - name: batch_id
+            data_type: string
+          - name: source_file
+            data_type: string
+          - name: ingested_at
+            data_type: timestamp
+          - name: ingestion_date
+            data_type: date
+      - name: contracts
+        description: Contratos de crédito sintéticos carregados da Bronze.
+        columns:
+          - name: contract_id
+            data_type: string
+            tests: [unique, not_null]
+          - name: customer_id
+            data_type: string
+            tests: [not_null]
+          - name: product_type
+            data_type: string
+          - name: principal_amount
+            data_type: numeric(38,9)
+          - name: annual_interest_rate
+            data_type: numeric(38,9)
+          - name: start_date
+            data_type: date
+          - name: end_date
+            data_type: date
+          - name: status
+            data_type: string
+          - name: updated_at
+            data_type: timestamp
+          - name: batch_id
+            data_type: string
+          - name: source_file
+            data_type: string
+          - name: ingested_at
+            data_type: timestamp
+          - name: ingestion_date
+            data_type: date
+      - name: installments
+        description: Parcelas e pagamentos sintéticos carregados da Bronze.
+        columns:
+          - name: contract_id
+            data_type: string
+            tests: [not_null]
+          - name: installment_number
+            data_type: int64
+            tests: [not_null]
+          - name: due_date
+            data_type: date
+          - name: paid_at
+            data_type: date
+          - name: amount_due
+            data_type: numeric(38,9)
+          - name: amount_paid
+            data_type: numeric(38,9)
+          - name: status
+            data_type: string
+          - name: updated_at
+            data_type: timestamp
+          - name: batch_id
+            data_type: string
+          - name: source_file
+            data_type: string
+          - name: ingested_at
+            data_type: timestamp
+          - name: ingestion_date
+            data_type: date

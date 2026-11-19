@@ -9,6 +9,8 @@ description = "Lakehouse financeiro sintético em GCP (portfólio)"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "dbt-bigquery==1.12.3",
+    "dbt-core==1.12.6",
     "google-cloud-bigquery>=3.47.0",
     "google-cloud-storage>=3.17.1",
 ]

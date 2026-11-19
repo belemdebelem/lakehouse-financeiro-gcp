@@ -1,0 +1,90 @@
+version: 2
+
+models:
+  - name: mart_carteira_credito
+    description: Valor original de contratos vigentes por fechamento mensal e produto.
+    columns:
+      - name: reference_month
+        description: Primeiro dia do mês de referência.
+        data_type: date
+        tests: [not_null]
+      - name: product_type
+        data_type: string
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['personal_loan', 'auto_loan']
+      - name: original_principal_amount
+        data_type: numeric(38,9)
+        tests: [not_null]
+      - name: contract_count
+        data_type: int64
+        tests: [not_null]
+
+  - name: mart_inadimplencia
+    description: Parcelas vencidas e não pagas na data de referência, por mês e produto.
+    columns:
+      - name: due_month
+        description: Primeiro dia do mês de vencimento.
+        data_type: date
+        tests: [not_null]
+      - name: product_type
+        data_type: string
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['personal_loan', 'auto_loan']
+      - name: overdue_installment_count
+        data_type: int64
+        tests: [not_null]
+      - name: overdue_amount
+        data_type: numeric(38,9)
+        tests: [not_null]
+      - name: max_overdue_days
+        data_type: int64
+        tests: [not_null]
+
+  - name: fato_pagamentos
+    description: Uma linha por parcela paga, com produto e data de pagamento.
+    columns:
+      - name: contract_id
+        data_type: string
+        tests: [not_null]
+      - name: installment_number
+        data_type: int64
+        tests: [not_null]
+      - name: customer_id
+        data_type: string
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('silver_customers')
+                field: customer_id
+      - name: product_type
+        data_type: string
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['personal_loan', 'auto_loan']
+      - name: payment_date
+        data_type: date
+        tests: [not_null]
+      - name: payment_month
+        data_type: date
+        tests: [not_null]
+      - name: due_date
+        data_type: date
+        tests: [not_null]
+      - name: amount_paid
+        data_type: numeric(38,9)
+        tests: [not_null]
+      - name: amount_due
+        data_type: numeric(38,9)
+        tests: [not_null]
+      - name: days_until_due_at_payment
+        data_type: int64
+        tests: [not_null]
