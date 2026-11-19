@@ -971,7 +971,8 @@ Tarefas:
     `.pre-commit-config.yaml`.
 -   WIF/OIDC e a conta `lakehouse-ci` versionados em
     `infrastructure/terraform/wif.tf`; o CD gera o backend GCS a partir de
-    `backend.hcl.example`.
+    `backend.hcl.example`. O provider usa apenas os claims `sub`, `actor` e
+    `repository`, e as exceções do Checkov estão no ADR 0004.
 -   `terraform plan` mostra 15 recursos novos, incluindo WIF, APIs e IAM.
     Nenhum `apply`, criação de WIF ou migração de state foi executado.
 -   `apply` e o build dbt usam `environment: demo`; é necessário configurar

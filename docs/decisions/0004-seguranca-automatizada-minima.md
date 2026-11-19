@@ -29,6 +29,22 @@ workflows de Dependabot nesta versão.
 - Checkov no CI para o Terraform.
 - Nenhum dado real, credencial ou segredo em logs e artefatos.
 
+## Exceções do Checkov
+
+Algumas verificações são inaplicáveis ao MVP sintético e foram desativadas
+em `.checkov.yml`, com justificativa registrada aqui:
+
+- `CKV_GCP_62` e `CKV_GCP_78`: o bucket de landing não usa logs de acesso
+  nem versionamento. Os dados são sintéticos, o upload usa
+  `if_generation_match=0` e o ciclo de vida remove objetos após 30 dias,
+  evitando custo adicional.
+- `CKV_GCP_81`: não há CSEK. O projeto usa criptografia gerenciada pelo
+  Google por padrão, sem gerenciar chaves próprias nesta demonstração.
+- `CKV_GCP_41` e `CKV_GCP_49`: a SA de CI precisa de papéis no nível do
+  projeto para criar e administrar SAs e IAM via Terraform. O risco é
+  mitigado por WIF sem chaves, org policy que proíbe chaves de SA,
+  identidades separadas e aprovação humana para `apply`.
+
 ## Riscos aceitos
 
 - Vulnerabilidades em dependências Python não são detectadas
