@@ -27,8 +27,8 @@ flowchart LR
     TF -. provisiona .-> GO
     TF -. provisiona .-> OPS
     TF -. provisiona .-> AUD
-    PY -. logs estruturados .-> LOG[Cloud Logging]
-    LOG -. alerta de falha .-> MON[Cloud Monitoring]
+    PY -. JSON estruturado via ADC .-> LOG[Cloud Logging]
+    LOG -. filtro status failure .-> MON[Cloud Monitoring: alerta]
     GH[GitHub Actions: CI, dbt build e verificações] -. OIDC/WIF .-> GCP[GCP]
 ```
 
@@ -163,10 +163,10 @@ mesmo arquivo mantém o mesmo `batch_id` e é idempotente.
 - Secret Manager permanece disponível para um segredo real caso surja
   essa necessidade. ADC/WIF evitam criar segredo estático para a
   autenticação normal do MVP; não criar segredo de demonstração fictício.
-- Terraform para os recursos. O CD gera o backend GCS, reaproveitando o
-  bucket do lakehouse com prefixo dedicado, sem novo bucket de state. A
-  migração do state local e o `apply` do WIF ainda dependem de autorização
-  explícita.
+- Terraform para os recursos. O state está no backend GCS, reaproveitando
+  o bucket do lakehouse com prefixo dedicado, sem novo bucket de state. O
+  WIF foi aplicado e o state local foi migrado; o CD executou `plan` sem
+  mudanças após a migração.
 
 ## Controles de custo
 
@@ -199,6 +199,23 @@ mesmo arquivo mantém o mesmo `batch_id` e é idempotente.
 - Cloud Monitoring usa métricas nativas do BigQuery/GCP e um alerta de
   falha baseado em logs. Métricas customizadas só serão adicionadas se
   forem necessárias e após avaliar custo/cardinalidade.
+
+## Observabilidade
+
+Os CLIs de ingestão, carga e qualidade escrevem logs JSON no stdout. Quando
+`CLOUD_LOGGING_ENABLED=true`, o mesmo registro é enviado explicitamente à
+API Cloud Logging via ADC/WIF, com `pipeline_name`, etapa, status, data de
+ingestão, `batch_id`/lista de lotes e duração. O módulo de qualidade também
+registra `invocation_id`, duração e contagens dos modelos/testes obtidas de
+`run_results.json` e `manifest.json`. O envio é desativado por padrão em
+execuções locais e habilitado no workflow de build.
+
+Terraform aplicou `roles/logging.logWriter` para as contas de serviço do
+pipeline e do dbt, uma política de alerta por log com eventos
+`status=failure` e um canal de e-mail. A API do Monitoring confirmou um
+incidente `OPEN` após os eventos sintéticos. O canal está habilitado; a API
+não informa status de verificação e não foi possível confirmar a entrega
+na caixa postal.
 
 ## Fora do MVP
 

@@ -30,6 +30,7 @@ env:
   DBT_VARS: '{"as_of_date": "${{ inputs.ingestion_date }}"}'
   PIPELINE_NAME: lakehouse-financeiro
   LOG_LEVEL: INFO
+  CLOUD_LOGGING_ENABLED: "true"
   INGESTION_DATE: ${{ inputs.ingestion_date }}
 
 jobs:

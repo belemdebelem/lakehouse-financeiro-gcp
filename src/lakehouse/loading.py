@@ -6,12 +6,14 @@ import logging
 import os
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
+from time import perf_counter
 from typing import Any
 
 from google.cloud import bigquery, storage
 
 from lakehouse.config import Settings
 from lakehouse.ingestion import build_object_path
+from lakehouse.observability import configure_logging
 
 LOGGER = logging.getLogger(__name__)
 
@@ -427,12 +429,42 @@ def load_bronze_from_gcs(
 
 def main() -> None:
     settings = Settings.from_env()
-    logging.basicConfig(level=settings.log_level)
+    configure_logging(
+        level=settings.log_level,
+        project_id=settings.project_id,
+        cloud_enabled=settings.cloud_logging_enabled,
+    )
     default_date = datetime.now(timezone.utc).date()
     ingestion_date = date.fromisoformat(os.getenv("INGESTION_DATE", default_date.isoformat()))
-    result = load_bronze_from_gcs(settings, ingestion_date)
-    for load in result.loads:
-        print(f"{load.entity}: {load.status} ({load.row_count} linhas)")
+    started = perf_counter()
+    try:
+        result = load_bronze_from_gcs(settings, ingestion_date)
+    except Exception as exc:
+        _log(
+            LOGGER,
+            logging.ERROR,
+            "pipeline.failed",
+            pipeline_name=settings.pipeline_name,
+            stage="bronze_load",
+            status="failure",
+            ingestion_date=ingestion_date.isoformat(),
+            error=str(exc),
+            duration_seconds=round(perf_counter() - started, 3),
+        )
+        raise
+    _log(
+        LOGGER,
+        logging.INFO,
+        "pipeline.stage_summary",
+        pipeline_name=settings.pipeline_name,
+        stage="bronze_load",
+        status="success",
+        ingestion_date=ingestion_date.isoformat(),
+        batch_ids=[item.batch_id for item in result.loads],
+        row_count=sum(item.row_count for item in result.loads),
+        entity_count=len(result.loads),
+        duration_seconds=round(perf_counter() - started, 3),
+    )
 
 
 if __name__ == "__main__":

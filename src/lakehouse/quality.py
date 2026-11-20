@@ -2,13 +2,18 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 from collections.abc import Mapping
 from datetime import date, datetime, timezone
 from pathlib import Path
+from time import perf_counter
 
 from google.cloud import bigquery
 
 from lakehouse.config import Settings
+from lakehouse.observability import configure_logging
+
+LOGGER = logging.getLogger(__name__)
 
 ENTITIES = ("customers", "contracts", "installments")
 SILVER_TABLES = tuple(f"silver_{entity}" for entity in ENTITIES)
@@ -74,15 +79,43 @@ def parse_run_results(path: Path) -> dict[str, object]:
         "fail": 0,
         "error": 0,
         "skipped": 0,
+        "execution_time_seconds": 0.0,
+        "rows_affected": 0,
+        "model_pass": 0,
+        "model_error": 0,
     }
     for result in payload.get("results", []):
         unique_id = str(result.get("unique_id", ""))
-        if not unique_id.startswith("test."):
-            continue
         status = str(result.get("status", "")).lower()
-        if status in summary:
+        summary["execution_time_seconds"] = float(summary["execution_time_seconds"]) + float(
+            result.get("execution_time", 0) or 0
+        )
+        if unique_id.startswith("test.") and status in {
+            "pass",
+            "warn",
+            "fail",
+            "error",
+            "skipped",
+        }:
             summary[status] = int(summary[status]) + 1
+        if unique_id.startswith("model."):
+            key = "model_pass" if status in {"success", "pass"} else "model_error"
+            summary[key] = int(summary[key]) + 1
+            adapter_response = result.get("adapter_response") or {}
+            summary["rows_affected"] = int(summary["rows_affected"]) + int(
+                adapter_response.get("rows_affected", 0) or 0
+            )
     return summary
+
+
+def parse_manifest(path: Path) -> dict[str, int]:
+    payload = json.loads(path.read_text())
+    nodes = payload.get("nodes", {})
+    return {
+        "models": sum(node.get("resource_type") == "model" for node in nodes.values()),
+        "tests": sum(node.get("resource_type") == "test" for node in nodes.values()),
+        "sources": len(payload.get("sources", {})),
+    }
 
 
 def parse_freshness(path: Path) -> dict[str, object]:
@@ -278,22 +311,74 @@ def main(argv: list[str] | None = None) -> None:
         type=Path,
         default=Path("dbt/target/sources.json"),
     )
+    parser.add_argument(
+        "--manifest",
+        type=Path,
+        default=Path("dbt/target/manifest.json"),
+    )
     args = parser.parse_args(argv)
 
     settings = Settings.from_env()
     if not settings.project_id:
         raise SystemExit("GCP_PROJECT_ID não configurado")
-
-    client = bigquery.Client(project=settings.project_id, location=settings.location)
-    rows = collect_rows(
-        client,
-        settings,
-        args.ingestion_date,
-        args.run_results,
-        args.freshness,
+    configure_logging(
+        level=settings.log_level,
+        project_id=settings.project_id,
+        cloud_enabled=settings.cloud_logging_enabled,
     )
-    write_rows(client, settings, args.ingestion_date, rows)
-    print(f"dq_results: {len(rows)} linhas gravadas para {args.ingestion_date}")
+    started = perf_counter()
+    try:
+        client = bigquery.Client(project=settings.project_id, location=settings.location)
+        rows = collect_rows(
+            client,
+            settings,
+            args.ingestion_date,
+            args.run_results,
+            args.freshness,
+        )
+        write_rows(client, settings, args.ingestion_date, rows)
+        run_summary = parse_run_results(args.run_results)
+        manifest_summary = parse_manifest(args.manifest) if args.manifest.exists() else {}
+        freshness_summary = parse_freshness(args.freshness)
+        batch_ids = sorted({row["batch_id"] for row in rows if row["entity"] != "dbt"})
+        failed = any(row["status"] == STATUS_FAIL for row in rows)
+        log = LOGGER.error if failed else LOGGER.info
+        log(
+            "pipeline.stage_summary",
+            extra={
+                "pipeline_name": settings.pipeline_name,
+                "stage": "quality",
+                "status": "failure" if failed else "success",
+                "ingestion_date": args.ingestion_date.isoformat(),
+                "batch_ids": batch_ids,
+                "invocation_id": run_summary["invocation_id"],
+                "quality_row_count": len(rows),
+                "dbt_tests_passed": run_summary["pass"],
+                "dbt_tests_failed": int(run_summary["fail"]) + int(run_summary["error"]),
+                "dbt_models_passed": run_summary["model_pass"],
+                "dbt_models_failed": run_summary["model_error"],
+                "dbt_execution_time_seconds": round(
+                    float(run_summary["execution_time_seconds"]), 3
+                ),
+                "dbt_rows_affected": run_summary["rows_affected"],
+                "manifest": manifest_summary,
+                "source_freshness_status": freshness_summary["status"],
+                "duration_seconds": round(perf_counter() - started, 3),
+            },
+        )
+    except Exception as exc:
+        LOGGER.error(
+            "pipeline.failed",
+            extra={
+                "pipeline_name": settings.pipeline_name,
+                "stage": "quality",
+                "status": "failure",
+                "ingestion_date": args.ingestion_date.isoformat(),
+                "error": str(exc),
+                "duration_seconds": round(perf_counter() - started, 3),
+            },
+        )
+        raise
 
 
 if __name__ == "__main__":

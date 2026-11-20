@@ -1,4 +1,4 @@
-"""Configurações mínimas do projeto (Fases 1, 4, 5 e 7)."""
+"""Configurações mínimas do projeto (Fases 1, 4, 5, 7 e 9)."""
 
 from __future__ import annotations
 
@@ -19,6 +19,7 @@ class Settings:
     pipeline_name: str
     log_level: str
     dbt_target: str = "dev"
+    cloud_logging_enabled: bool = False
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -34,4 +35,6 @@ class Settings:
             pipeline_name=os.getenv("PIPELINE_NAME", "lakehouse-financeiro"),
             log_level=os.getenv("LOG_LEVEL", "INFO"),
             dbt_target=os.getenv("DBT_TARGET", "dev"),
+            cloud_logging_enabled=os.getenv("CLOUD_LOGGING_ENABLED", "false").lower()
+            in {"1", "true", "yes", "on"},
         )

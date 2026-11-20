@@ -9,6 +9,7 @@ from lakehouse.quality import (
     build_rows,
     get_counts,
     parse_freshness,
+    parse_manifest,
     parse_run_results,
     target_dataset,
     write_rows,
@@ -30,7 +31,12 @@ def test_parse_run_results_counts_only_tests(tmp_path):
             {
                 "metadata": {"invocation_id": "inv-123"},
                 "results": [
-                    {"unique_id": "model.pkg.silver_customers", "status": "pass"},
+                    {
+                        "unique_id": "model.pkg.silver_customers",
+                        "status": "success",
+                        "execution_time": 1.25,
+                        "adapter_response": {"rows_affected": 10},
+                    },
                     {"unique_id": "test.pkg.not_null_1", "status": "pass"},
                     {"unique_id": "test.pkg.unique_1", "status": "fail"},
                     {"unique_id": "test.pkg.accepted_1", "status": "warn"},
@@ -46,6 +52,26 @@ def test_parse_run_results_counts_only_tests(tmp_path):
     assert summary["fail"] == 1
     assert summary["warn"] == 1
     assert summary["error"] == 0
+    assert summary["model_pass"] == 1
+    assert summary["rows_affected"] == 10
+    assert summary["execution_time_seconds"] == 1.25
+
+
+def test_parse_manifest_counts_lineage_resources(tmp_path):
+    path = tmp_path / "manifest.json"
+    path.write_text(
+        json.dumps(
+            {
+                "nodes": {
+                    "model.pkg.silver": {"resource_type": "model"},
+                    "test.pkg.unique": {"resource_type": "test"},
+                },
+                "sources": {"source.pkg.bronze": {}},
+            }
+        )
+    )
+
+    assert parse_manifest(path) == {"models": 1, "tests": 1, "sources": 1}
 
 
 def test_parse_freshness_uses_worst_status_and_max_age(tmp_path):

@@ -1199,6 +1199,7 @@ source = { editable = "." }
 dependencies = [
     { name = "dbt-bigquery" },
     { name = "dbt-core" },
+    { name = "google-auth", extra = ["requests"] },
     { name = "google-cloud-bigquery" },
     { name = "google-cloud-storage" },
 ]
@@ -1215,6 +1216,7 @@ dev = [
 requires-dist = [
     { name = "dbt-bigquery", specifier = "==1.12.3" },
     { name = "dbt-core", specifier = "==1.12.6" },
+    { name = "google-auth", extras = ["requests"], specifier = ">=2.0.0" },
     { name = "google-cloud-bigquery", specifier = ">=3.47.0" },
     { name = "google-cloud-storage", specifier = ">=3.17.1" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.7.0" },

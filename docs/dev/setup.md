@@ -1,4 +1,4 @@
-# Setup e execução local (Fases 1 a 8 — concluídas)
+# Setup e execução local (Fases 1 a 9 em andamento)
 
 ## Pré-requisitos
 
@@ -39,6 +39,9 @@ mesmas versões do lockfile.
   `bronze_dbt_test__audit` não recebe sufixo `_dev`.
 - Definir `GOOGLE_CLOUD_PROJECT` com o mesmo `GCP_PROJECT_ID` evita avisos
   do cliente BigQuery durante comandos dbt.
+- `CLOUD_LOGGING_ENABLED` controla o envio explícito dos logs Python ao
+  Cloud Logging; o padrão é `false`. Habilite-o somente com ADC/WIF e a
+  permissão `roles/logging.logWriter` aplicada à identidade.
 
 ## Dados sintéticos (Fase 2)
 
@@ -212,6 +215,37 @@ Configure como variáveis do repositório: `GCP_PROJECT_ID`, `GCP_REGION`,
 `GCP_PIPELINE_SA` e `GCP_DBT_SA`. Nenhuma chave JSON é necessária.
 O `GITHUB_TOKEN` é suficiente para o Gitleaks.
 
+## Observabilidade (Fase 9)
+
+Os CLIs Python escrevem JSON no stdout. Para enviar eventos ao Cloud Logging
+em execução local, configure ADC e confirme que o usuário/conta dispõe de
+`roles/logging.logWriter`:
+
+```bash
+set -a; source .env; set +a
+export CLOUD_LOGGING_ENABLED=true
+uv run python -m lakehouse.loading
+```
+
+O workflow `DBT - Build controlado` habilita a variável para as contas WIF
+do pipeline e do dbt. Em Logs Explorer, filtre por
+`jsonPayload.pipeline_name="lakehouse-financeiro"`; use `batch_id`,
+`stage`, `status` e `duration_seconds` para rastrear as etapas. O resumo de
+qualidade também registra `invocation_id`, tempo de execução, resultados
+dos testes/modelos, linhas afetadas e quantidades do manifest.
+
+Terraform aplica uma política que abre incidente no Cloud Monitoring para
+eventos `jsonPayload.status="failure"` e associa o canal de e-mail fornecido
+por `TF_VAR_alert_email` (não versione esse valor). Em 2026-11-20, a API do
+Monitoring confirmou um incidente `OPEN` após eventos sintéticos e o canal
+apareceu habilitado. A API não informa status de verificação; a entrega na
+caixa postal não foi confirmada.
+
+Cloud Logging inclui 50 GiB por projeto/mês; armazenamento acima desse
+volume é tarifado. O volume deste MVP é baixo, mas a franquia é compartilhada
+por todo o projeto. Verifique [preços atuais do Cloud Logging](https://cloud.google.com/logging#pricing)
+e a estimativa da política de alertas no Console antes de aplicar.
+
 Validação de 2026-11-19: CI verde em `Checks`, `dbt compile`, `Terraform` e
 `Gitleaks`; CD `plan` sem mudanças; build dbt com aprovação do environment
 `demo` e `PASS=83`, artefato `dbt-artifacts` publicado e 12 linhas `PASS` em
@@ -233,11 +267,12 @@ cp terraform.tfvars.example terraform.tfvars
 terraform plan
 ```
 
-`apply` e `destroy` só com aprovação explícita. O CD gera `backend.tf` e
-`backend.hcl` a partir das variáveis do repositório; localmente não há
-backend remoto configurado. A migração do state local para o bucket depende
-de autorização. O orçamento e os alertas de
-faturamento são configurados manualmente; veja
+O backend GCS já está ativo no prefixo
+`terraform/state/lakehouse-financeiro`. O CD gera `backend.tf` e
+`backend.hcl` a partir das variáveis do repositório; para executar Terraform
+localmente, configure o backend GCS e inicialize o workspace existente antes
+de planejar mudanças. `apply` e `destroy` só com aprovação explícita. O
+orçamento e os alertas de faturamento são configurados manualmente; veja
 `infrastructure/terraform/README.md`.
 
 ## Observações
@@ -246,7 +281,8 @@ faturamento são configurados manualmente; veja
   configuração, lint configurado e nenhuma credencial versionada.
 - Fase 2 concluída: gerador determinístico, amostras válidas e inválidas,
   esquema em código e testes de reprodutibilidade.
-- Fase 3 concluída: Terraform mínimo, state local e orçamento revisado.
+- Fase 3 concluída: Terraform mínimo provisionado e orçamento revisado; o
+  state foi migrado para GCS na Fase 8.
 - Fase 4 concluída: ingestão validada, checksum, caminho particionado,
   não sobrescrita e testes com client fake.
 - Fase 5 concluída: DDL versionado, carga GCS → staging → Bronze com
@@ -256,8 +292,6 @@ faturamento são configurados manualmente; veja
 - Fase 7 concluída: `DBT_TARGET` usado no resumo, `store_failures` em
   `bronze_dbt_test__audit`, freshness na Bronze, DDL e CLI em
   `ops.dq_results`, testes unitários e integração opt-in de idempotência.
-- Fase 8 implementada no código: SQLFluff, pre-commit, Gitleaks, Checkov,
-  workflows com WIF e backend GCS declarado; `apply`/migração de state e
-  configuração de variáveis/revisores no GitHub pendentes.
-- `docs/dev/fase1-evolucao.md` registra como estes artefatos serão
-  atualizados em cada fase seguinte.
+- Fase 8 concluída: SQLFluff, pre-commit, Gitleaks, Checkov, workflows com
+  WIF e backend GCS aplicados; state migrado, variáveis do GitHub e revisores
+  do environment `demo` configurados. O CI/CD foi validado.

@@ -16,6 +16,7 @@ def test_settings_from_env_defaults(monkeypatch):
     monkeypatch.delenv("PIPELINE_NAME", raising=False)
     monkeypatch.delenv("LOG_LEVEL", raising=False)
     monkeypatch.delenv("DBT_TARGET", raising=False)
+    monkeypatch.delenv("CLOUD_LOGGING_ENABLED", raising=False)
 
     settings = Settings.from_env()
 
@@ -30,6 +31,7 @@ def test_settings_from_env_defaults(monkeypatch):
     assert settings.pipeline_name == "lakehouse-financeiro"
     assert settings.log_level == "INFO"
     assert settings.dbt_target == "dev"
+    assert settings.cloud_logging_enabled is False
 
 
 def test_settings_from_env_overrides(monkeypatch):
@@ -41,6 +43,7 @@ def test_settings_from_env_overrides(monkeypatch):
     monkeypatch.setenv("PIPELINE_NAME", "demo")
     monkeypatch.setenv("LOG_LEVEL", "DEBUG")
     monkeypatch.setenv("DBT_TARGET", "prod")
+    monkeypatch.setenv("CLOUD_LOGGING_ENABLED", "true")
 
     settings = Settings.from_env()
 
@@ -51,3 +54,4 @@ def test_settings_from_env_overrides(monkeypatch):
     assert settings.pipeline_name == "demo"
     assert settings.log_level == "DEBUG"
     assert settings.dbt_target == "prod"
+    assert settings.cloud_logging_enabled is True

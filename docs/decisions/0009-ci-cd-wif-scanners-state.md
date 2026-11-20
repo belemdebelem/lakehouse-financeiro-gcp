@@ -34,9 +34,8 @@ GCP no repositório; configurações são variáveis do repositório.
 
 O CD gera o backend GCS do Terraform, que reaproveita o bucket do lakehouse
 com o prefixo `terraform/state/lakehouse-financeiro`. Nenhum bucket
-adicional é criado. Localmente, a inicialização continua com `terraform
-init`; a migração do state local será feita em separado, com autorização
-explícita.
+adicional é criado. O state local foi migrado para esse backend; o `plan`
+posterior executado pelo CD terminou sem mudanças.
 
 ## Alternativas consideradas
 

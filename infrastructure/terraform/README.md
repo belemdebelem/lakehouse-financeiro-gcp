@@ -14,6 +14,9 @@
   auditoria guarda falhas dos testes na Fase 7.
 - IAM: três contas de serviço separadas — `lakehouse-pipeline`,
   `lakehouse-dbt` e `lakehouse-ci`.
+- Observabilidade: APIs de Cloud Logging/Monitoring, papel
+  `roles/logging.logWriter` para as contas do pipeline e dbt e uma política
+  de alerta baseada em eventos JSON com `status=failure`.
 - WIF/OIDC: pool `github-actions`, provider `github` e vínculo restrito ao
   repositório `belemdebelem/lakehouse-financeiro-gcp`.
 - Nenhum Cloud Scheduler, Composer, Dataflow, bucket de state ou serviço
@@ -44,20 +47,19 @@ do Git; o repositório versiona apenas `terraform.tfvars.example`.
 
 ## State
 
-O state continua local (`terraform.tfstate`) e ignorado pelo Git até a
-migração autorizada. A Fase 8 faz o CD gerar `backend.tf` e `backend.hcl`,
-com exemplo em `backend.hcl.example`, usando o bucket e o prefixo
-`terraform/state/lakehouse-financeiro`, sem criar um bucket adicional. O
-uso local permanece com state local e `terraform init`. O
-`.terraform.lock.hcl` é versionado para
+O state Terraform foi migrado para o backend GCS no bucket do lakehouse,
+com prefixo `terraform/state/lakehouse-financeiro`; nenhum bucket adicional
+foi criado. O workflow de CD gera `backend.tf` e `backend.hcl` para usar
+esse backend. Para operações locais, inicialize o backend GCS antes de
+executar comandos Terraform. O `.terraform.lock.hcl` é versionado para
 fixar o provider. Veja `docs/decisions/0009-ci-cd-wif-scanners-state.md`.
 
 ## IAM
 
 | Identidade | Permissões concedidas |
 |---|---|
-| `lakehouse-pipeline` | `storage.objectCreator` e `storage.objectViewer` no bucket; `bigquery.jobUser` no projeto; `bigquery.dataEditor` em `bronze` e `ops`. |
-| `lakehouse-dbt` | `bigquery.jobUser` no projeto; `bigquery.dataViewer` em `bronze`; `bigquery.dataEditor` em `bronze_dbt_test__audit`, `silver`, `silver_dev`, `gold`, `gold_dev` e `ops`. |
+| `lakehouse-pipeline` | `storage.objectCreator` e `storage.objectViewer` no bucket; `bigquery.jobUser` no projeto; `bigquery.dataEditor` em `bronze` e `ops`; `logging.logWriter` no projeto. |
+| `lakehouse-dbt` | `bigquery.jobUser` no projeto; `bigquery.dataViewer` em `bronze`; `bigquery.dataEditor` em `bronze_dbt_test__audit`, `silver`, `silver_dev`, `gold`, `gold_dev` e `ops`; `logging.logWriter` no projeto. |
 | `lakehouse-ci` | `serviceusage.serviceUsageAdmin`, `storage.admin`, `bigquery.admin`, `iam.serviceAccountAdmin`, `iam.workloadIdentityPoolAdmin`, `iam.serviceAccountUser` e `resourcemanager.projectIamAdmin` no projeto, para `plan`/`apply` controlado. |
 | Principal WIF do repositório | `iam.workloadIdentityUser` nas três contas de serviço; restrito ao repositório e sem chaves JSON. |
 | Usuário local via ADC | Permissões administrativas necessárias para `plan`/`apply`, fora do Terraform e fora do repositório. |
@@ -70,8 +72,10 @@ geração usada na ingestão (Fase 4), que evita sobrescrever o original.
 O workflow `CD - Terraform` executa `plan` e `apply` em jobs separados; o
 `apply` exige o environment `demo` com revisores configurados no GitHub.
 As variáveis `GCP_PROJECT_ID`, `GCS_BUCKET_NAME`, `GCP_WIF_PROVIDER` e
-`GCP_CI_SA` devem existir no repositório. O `terraform plan` local mostra
-15 recursos novos; nenhum `apply` foi executado nesta fase.
+`GCP_CI_SA` estão configuradas no repositório. O `apply` inicial criou 15
+recursos; o state foi migrado para o backend GCS e o `plan` posterior do CD
+terminou sem mudanças. Os revisores do environment `demo` também estão
+configurados.
 
 ## Orçamento e alertas
 
@@ -100,3 +104,13 @@ estimativa e o trade-off estão no ADR 0001.
 - A regra de ciclo de vida apaga objetos com mais de 30 dias no bucket.
 - Execute o pipeline manualmente e confira o Billing Reports após cada
   sessão de uso. O alerta de orçamento é apenas aviso.
+- Logs enviados pelo pipeline usam o Cloud Logging. A franquia e o preço
+  aplicáveis dependem do volume mensal e da conta; verifique os preços
+  vigentes e acompanhe o volume. A demonstração emite poucos registros por
+  execução. Configure o canal de alerta usando `TF_VAR_alert_email`; o valor
+  não deve ser versionado. Um único canal de e-mail está associado à política
+  de falha para conter custos.
+- Uma política log-based tem custo estimado em cerca de US$ 0,035/mês nos
+  preços atuais; a franquia de 50 GiB/mês de Logging é compartilhada por
+  todo o projeto. Consulte os links de preço no runbook antes de aumentar o
+  volume de logs ou adicionar políticas.

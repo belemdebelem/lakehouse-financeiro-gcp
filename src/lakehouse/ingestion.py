@@ -8,12 +8,14 @@ import logging
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from pathlib import Path
+from time import perf_counter
 from typing import Any
 
 from google.api_core.exceptions import Conflict, PreconditionFailed
 
 from lakehouse.config import Settings
 from lakehouse.generation import load_dataset
+from lakehouse.observability import configure_logging
 from lakehouse.schema import FIELDS, validate_dataset
 
 LOGGER = logging.getLogger(__name__)
@@ -246,10 +248,39 @@ def ingest_directory(
 
 def main() -> None:
     settings = Settings.from_env()
-    logging.basicConfig(level=settings.log_level)
-    result = ingest_directory(Path("data/sample"), settings)
-    for upload in result.uploads:
-        print(upload.object_path)
+    configure_logging(
+        level=settings.log_level,
+        project_id=settings.project_id,
+        cloud_enabled=settings.cloud_logging_enabled,
+    )
+    started = perf_counter()
+    try:
+        result = ingest_directory(Path("data/sample"), settings)
+    except Exception as exc:
+        _log(
+            LOGGER,
+            logging.ERROR,
+            "pipeline.failed",
+            pipeline_name=settings.pipeline_name,
+            stage="ingestion",
+            status="failure",
+            error=str(exc),
+            duration_seconds=round(perf_counter() - started, 3),
+        )
+        raise
+    _log(
+        LOGGER,
+        logging.INFO,
+        "pipeline.stage_summary",
+        pipeline_name=settings.pipeline_name,
+        stage="ingestion",
+        status="success",
+        ingestion_date=result.ingestion_date.isoformat(),
+        batch_ids=[item.batch_id for item in result.uploads],
+        row_count=sum(item.row_count for item in result.uploads),
+        file_count=len(result.uploads),
+        duration_seconds=round(perf_counter() - started, 3),
+    )
 
 
 if __name__ == "__main__":

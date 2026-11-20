@@ -520,10 +520,9 @@ compatibilidade. Evitar dbt packages externos sem necessidade real.
 A LLM deve seguir esta sequência. Cada fase tem objetivo, tarefas,
 critérios de aceite e uma condição de parada.
 
-Os artefatos da Fase 1 não são congelados: cada fase seguinte atualiza
-`pyproject.toml`, `uv.lock`, `.env.example`, `Settings`, testes,
-`.gitignore` e `docs/dev/setup.md` no mesmo commit da feature, conforme
-`docs/dev/fase1-evolucao.md`.
+Dependências, configuração, testes, arquivos ignorados e documentação de
+setup evoluem junto com cada funcionalidade. Mantenha esses artefatos
+alinhados ao código em cada fase.
 
 ### Fase 0 --- Alinhamento e desenho (concluída)
 
@@ -565,8 +564,6 @@ Tarefas:
 5.  Criar `.gitignore` e `.env.example`.
 6.  Documentar instalação e execução local.
 7.  Criar um teste simples para validar o ambiente.
-8.  Registrar em `docs/dev/fase1-evolucao.md` o contrato de atualização
-    dos artefatos da Fase 1 pelas fases seguintes.
 
 **Aceite:**
 
@@ -574,7 +571,6 @@ Tarefas:
 -   Testes executados localmente.
 -   Nenhuma credencial ou dado sensível versionado.
 -   README de desenvolvimento atualizado.
--   Contrato de evolução registrado e referenciado nas fases seguintes.
 
 **Parar e pedir aprovação.**
 
@@ -590,9 +586,8 @@ Tarefas:
 4.  Criar exemplos válidos e inválidos.
 5.  Documentar granularidade, relacionamentos e regras de domínio.
 6.  Garantir que a geração repetida com a mesma seed seja reproduzível.
-7.  Atualizar os artefatos da Fase 1 conforme
-    `docs/dev/fase1-evolucao.md` (dependências/lockfile, testes e
-    `docs/dev/setup.md`).
+7.  Manter dependências, lockfile, testes e `docs/dev/setup.md`
+    atualizados.
 
 **Aceite:**
 
@@ -625,9 +620,8 @@ Tarefas:
     explícita.
 9.  Documentar destruição segura dos recursos e conferir Billing após
     cada sessão de uso.
-10. Atualizar os artefatos da Fase 1 conforme
-    `docs/dev/fase1-evolucao.md` (`.gitignore` para
-    `.terraform.lock.hcl` e `docs/dev/setup.md`).
+10. Manter `.gitignore`, `.terraform.lock.hcl` e `docs/dev/setup.md`
+    alinhados à infraestrutura.
 
 **Decisões de segurança:**
 
@@ -688,9 +682,8 @@ Tarefas:
 6.  Tratar erros de leitura, validação e upload.
 
 7.  Criar testes unitários com mocks e testes de integração controlados.
-8.  Atualizar os artefatos da Fase 1 conforme
-    `docs/dev/fase1-evolucao.md` (dependência de GCS, `GCS_BUCKET_NAME`
-    em `Settings`, `.env.example`, testes e `docs/dev/setup.md`).
+8.  Manter dependências, configuração, testes e `docs/dev/setup.md`
+    alinhados à ingestão.
 
 Manter a ingestão manual, com poucos arquivos sintéticos, evitando
 uploads repetidos e objetos duplicados. Definir retenção/limpeza dos
@@ -737,9 +730,8 @@ Tarefas:
     Fase 0.
 6.  Tratar falhas e reexecução sem duplicar registros.
 7.  Documentar estratégia de carga e particionamento.
-8.  Atualizar os artefatos da Fase 1 conforme
-    `docs/dev/fase1-evolucao.md` (dependência do BigQuery, `BQ_DATASET_*`
-    em `Settings`, `.env.example`, testes e `docs/dev/setup.md`).
+8.  Manter dependências, configuração, testes e `docs/dev/setup.md`
+    alinhados à carga Bronze.
 
 Executar cargas somente sob demanda e usar o menor conjunto de dados
 que demonstre o fluxo. Acompanhar bytes processados nas consultas e
@@ -803,9 +795,8 @@ Tarefas:
 8.  Não adicionar packages externos sem necessidade; manter SQL legível
     e versionado.
 9.  Evitar transformações redundantes e dependências circulares.
-10. Atualizar os artefatos da Fase 1 conforme
-    `docs/dev/fase1-evolucao.md` (`dbt-core`/`dbt-bigquery` pinados,
-    variáveis do dbt, `.gitignore`, testes e `docs/dev/setup.md`).
+10. Manter dependências, configuração, `.gitignore`, testes e
+    `docs/dev/setup.md` alinhados ao dbt.
 
 **Aceite:**
 
@@ -867,9 +858,8 @@ Tarefas:
 6.  Verificar contagens de entrada, saída e rejeitados e persistir o
     resumo em `ops.dq_results`.
 7.  Documentar limitações e regras para correção/reprocessamento.
-8.  Atualizar os artefatos da Fase 1 conforme
-    `docs/dev/fase1-evolucao.md` (testes de qualidade/idempotência e
-    `docs/dev/setup.md`).
+8.  Manter testes de qualidade/idempotência e `docs/dev/setup.md`
+    alinhados.
 
 **Aceite:**
 
@@ -945,9 +935,8 @@ Tarefas:
 11. Exigir aprovação humana antes de implantação em recursos de
     produção/demonstração.
 12. Restringir permissões do workflow e proteger secrets/variables.
-13. Atualizar os artefatos da Fase 1 conforme
-    `docs/dev/fase1-evolucao.md` (`sqlfluff`, Gitleaks/Checkov,
-    `.gitignore`, testes e `docs/dev/setup.md`).
+13. Manter ferramentas, verificações, `.gitignore` e `docs/dev/setup.md`
+    alinhados aos workflows.
 
 **Aceite:**
 
@@ -1003,9 +992,8 @@ Tarefas:
     falha do pipeline, preferindo uma condição baseada em logs.
 6.  Criar procedimento de diagnóstico e reprocessamento.
 7.  Evitar métricas, painéis ou alertas sem uso definido.
-8.  Atualizar os artefatos da Fase 1 conforme
-    `docs/dev/fase1-evolucao.md` (cliente de logging se necessário,
-    `LOG_LEVEL`, testes e `docs/dev/setup.md`).
+8.  Manter configuração, testes e `docs/dev/setup.md` alinhados à
+    observabilidade.
 
 **Importante:**
  scripts executados localmente ou no GitHub Actions não
@@ -1020,6 +1008,22 @@ atuais sempre que possível; excedentes podem ser cobrados.
 -   Falhas relevantes podem ser encontradas.
 -   Alertas testados.
 -   Runbook documentado.
+
+**Implementação (2026-11-20):** os CLIs Python emitem JSON
+no stdout e enviam os mesmos eventos via ADC quando
+`CLOUD_LOGGING_ENABLED=true`. O workflow de build habilita a variável; os
+eventos resumem lote, etapa, status, duração e resultados dbt/lineage. As
+APIs, permissões `logging.logWriter`, a política por log de falha e o canal
+de e-mail foram aplicados. A API do Monitoring confirmou um incidente
+`OPEN` para a política após eventos sintéticos; o canal está habilitado.
+O status de verificação não é informado pela API para esse canal. Não foi
+possível confirmar a entrega na caixa postal.
+
+Para minimizar custo, existe apenas uma política log-based, estimada em
+cerca de US$ 0,035/mês; os primeiros 50 GiB de logs por projeto/mês são
+incluídos, com cobrança acima disso. A franquia é compartilhada pelo
+projeto. Consulte [preços de alertas](https://cloud.google.com/stackdriver/observability-pricing-examples)
+e [preços do Cloud Logging](https://cloud.google.com/logging#pricing).
 
 **Parar e pedir aprovação.**
 
@@ -1043,9 +1047,8 @@ Tarefas:
     estimado, sem inventar resultados.
 8.  Preparar roteiro de demonstração para palestra.
 9.  Criar seção de limitações e próximos passos.
-10. Atualizar os artefatos da Fase 1 conforme
-    `docs/dev/fase1-evolucao.md` (README público, `docs/spec.md` e
-    `docs/dev/setup.md` final).
+10. Manter README público, `docs/spec.md` e `docs/dev/setup.md`
+    alinhados ao estado final.
 
 **Aceite:**
 

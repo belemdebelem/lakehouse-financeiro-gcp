@@ -1,4 +1,4 @@
-# Runbook de qualidade e recuperação
+# Runbook de qualidade, recuperação e observabilidade
 
 Este procedimento cobre a Fase 7. Use ADC local e variáveis de `.env`
 carregadas no shell. Substitua `<PROJECT_ID>` pelo projeto configurado.
@@ -139,9 +139,49 @@ por freshness, execute a ingestão/carga do lote e repita o dispatch; se
 falhar por teste de modelo, inspecione
 `bronze_dbt_test__audit.<nome_do_teste>` como na Fase 7.
 
-WIF, conta `lakehouse-ci` e backend GCS estão versionados, mas ainda não
-foram aplicados. O state local deve ser migrado apenas com autorização e
-plano explícitos.
+WIF, conta `lakehouse-ci` e backend GCS foram aplicados. O state do
+Terraform está no bucket do lakehouse, no prefixo
+`terraform/state/lakehouse-financeiro`; o `plan` posterior do CD terminou
+sem mudanças. As variáveis do GitHub e o revisor obrigatório do environment
+`demo` também foram configurados. Consulte o ADR 0009 para o registro da
+implantação.
+
+## Observabilidade (Fase 9)
+
+Os comandos Python emitem JSON localmente e enviam eventos à API Cloud
+Logging apenas quando `CLOUD_LOGGING_ENABLED=true`. O workflow de build já
+habilita essa variável. Eventos trazem `pipeline_name`, etapa, status, data,
+duração e identificadores dos lotes; o resumo de qualidade acrescenta
+`invocation_id` e contagens dbt/lineage.
+
+Para localizar eventos no Logs Explorer:
+
+```text
+logName="projects/<PROJECT_ID>/logs/lakehouse-financeiro-pipeline"
+jsonPayload.pipeline_name="lakehouse-financeiro"
+```
+
+Para falhas:
+
+```text
+logName="projects/<PROJECT_ID>/logs/lakehouse-financeiro-pipeline"
+jsonPayload.status="failure"
+```
+
+A política Terraform de Cloud Monitoring está aplicada para esse filtro e
+associada a um canal de e-mail configurado por `TF_VAR_alert_email`. Em
+2026-11-20, a API do Monitoring confirmou um incidente `OPEN` após eventos
+sintéticos. O canal aparece habilitado, mas a API não informa status de
+verificação e não foi possível confirmar a entrega na caixa postal. Não use
+uma falha de dados reais para o teste.
+
+O envio explícito aumenta o volume ingerido no Cloud Logging. A página de
+[preços](https://cloud.google.com/logging#pricing) informa franquia de 50
+GiB por projeto/mês e tarifa de armazenamento acima dela. Uma política
+log-based custa cerca de US$ 0,035/mês segundo os
+[exemplos de preços](https://cloud.google.com/stackdriver/observability-pricing-examples).
+O volume desta demonstração é pequeno, mas a franquia é compartilhada por
+todo o projeto.
 
 ## Limitações
 

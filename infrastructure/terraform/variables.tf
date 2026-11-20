@@ -28,3 +28,10 @@ variable "github_repository" {
   type        = string
   default     = "belemdebelem/lakehouse-financeiro-gcp"
 }
+
+variable "alert_email" {
+  description = "Email para notificações de falha; forneça via TF_VAR_alert_email, não versione o valor."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
