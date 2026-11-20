@@ -1,6 +1,6 @@
 # Runbook de qualidade, recuperação e observabilidade
 
-Este procedimento cobre a Fase 7. Use ADC local e variáveis de `.env`
+Este procedimento cobre as Fases 7 a 10. Use ADC local e variáveis de `.env`
 carregadas no shell. Substitua `<PROJECT_ID>` pelo projeto configurado.
 
 ## Sequência normal
@@ -171,9 +171,9 @@ jsonPayload.status="failure"
 A política Terraform de Cloud Monitoring está aplicada para esse filtro e
 associada a um canal de e-mail configurado por `TF_VAR_alert_email`. Em
 2026-11-20, a API do Monitoring confirmou um incidente `OPEN` após eventos
-sintéticos. O canal aparece habilitado, mas a API não informa status de
-verificação e não foi possível confirmar a entrega na caixa postal. Não use
-uma falha de dados reais para o teste.
+sintéticos. O canal aparece habilitado; a pessoa responsável confirmou o
+recebimento do e-mail em 2026-11-20. Não use uma falha de dados reais para
+o teste.
 
 O envio explícito aumenta o volume ingerido no Cloud Logging. A página de
 [preços](https://cloud.google.com/logging#pricing) informa franquia de 50
@@ -182,6 +182,35 @@ log-based custa cerca de US$ 0,035/mês segundo os
 [exemplos de preços](https://cloud.google.com/stackdriver/observability-pricing-examples).
 O volume desta demonstração é pequeno, mas a franquia é compartilhada por
 todo o projeto.
+
+## Roteiro de demonstração
+
+Roteiro sugerido para uma apresentação de 8 a 10 minutos:
+
+1. **Problema e escopo (1 min):** apresentar as perguntas analíticas e
+   esclarecer que todos os dados são sintéticos.
+2. **Arquitetura (2 min):** percorrer o diagrama em
+   `docs/architecture.md`, destacando GCS → Bronze → dbt Silver/Gold e o
+   papel de Python, Terraform e GitHub Actions.
+3. **Engenharia de Dados (2 min):** mostrar `data/sample/`, o `batch_id`, a
+   carga idempotente e as três camadas. Referenciar o lote observado de 10
+   clientes, 13 contratos e 78 parcelas, sem rodar outra carga durante a
+   apresentação.
+4. **DataOps e qualidade (2 min):** abrir `ops.dq_results` ou os resultados
+   registrados: 12 métricas `PASS`, zero diferenças Bronze/Silver e 77
+   testes dbt aprovados. Mostrar `index.html` obtido do artefato
+   `dbt-artifacts` da execução controlada.
+5. **DevSecOps e operação (1–2 min):** mostrar o CI, o deploy separado com
+   aprovação, WIF sem chave JSON e o e-mail do alerta sintético já recebido.
+6. **Limites e custo (1 min):** reforçar execução manual, dados sintéticos,
+   logs de baixo volume, custo por uso e a necessidade de revisar Billing.
+
+Para uma demonstração ao vivo, iniciar `DBT - Build controlado` em GitHub
+Actions com `ingestion_date=2026-11-17` e aguardar a aprovação do environment
+`demo`. A execução acessa GCS e BigQuery e pode gerar cobrança. Para uma
+apresentação sem custo adicional, prefira os resultados e artefatos já
+registrados. A falha recuperável está documentada acima em
+**Falha entre etapas e retomada**.
 
 ## Limitações
 

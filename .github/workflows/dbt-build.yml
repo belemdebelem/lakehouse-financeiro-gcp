@@ -80,6 +80,7 @@ jobs:
         with:
           name: dbt-artifacts
           path: |
+            dbt/target/index.html
             dbt/target/manifest.json
             dbt/target/catalog.json
             dbt/target/run_results.json

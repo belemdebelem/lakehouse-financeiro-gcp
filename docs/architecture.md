@@ -13,23 +13,22 @@ ou dado financeiro/pessoal real.
 flowchart LR
     CSV[CSV sintéticos] --> PY[Python: validar e ingerir]
     PY --> GCS[GCS: landing/raw]
-    GCS --> BQLOAD[Carga batch]
-    BQLOAD --> BR[BigQuery: bronze]
-    BR --> SI[BigQuery: silver via dbt]
-    SI --> GO[BigQuery: gold via dbt]
-    GO --> DQ[Python: resumo de qualidade]
-    DQ --> OPS[BigQuery: ops.dq_results]
-    SI -. store_failures .-> AUD[BigQuery: bronze_dbt_test__audit]
+    GCS --> LOAD[Python: carga batch]
+    LOAD --> BR[BigQuery: bronze]
+    BR --> DBT[dbt Core: Silver e Gold]
+    DBT --> DQ[Python: resumo de qualidade]
+    DQ --> OPS[BigQuery: ops]
+    DBT -. store_failures .-> AUD[BigQuery: bronze_dbt_test__audit]
 
     TF[Terraform] -. provisiona .-> GCS
     TF -. provisiona .-> BR
-    TF -. provisiona .-> SI
-    TF -. provisiona .-> GO
     TF -. provisiona .-> OPS
     TF -. provisiona .-> AUD
     PY -. JSON estruturado via ADC .-> LOG[Cloud Logging]
     LOG -. filtro status failure .-> MON[Cloud Monitoring: alerta]
-    GH[GitHub Actions: CI, dbt build e verificações] -. OIDC/WIF .-> GCP[GCP]
+    MON --> EMAIL[Canal de e-mail]
+    GH[GitHub Actions: CI e build manual] -. OIDC/WIF .-> GCP[GCP]
+    GH --> ART[Artefatos dbt: docs e lineage]
 ```
 
 ## Camadas e responsabilidades
@@ -160,6 +159,8 @@ mesmo arquivo mantém o mesmo `batch_id` e é idempotente.
 - O CD separa `plan` de `apply`; `apply` e o build dbt exigem o environment
   `demo` com aprovação humana. Variáveis do repositório substituem segredos
   estáticos.
+- O workflow de build publica `index.html`, `catalog.json`, `manifest.json`,
+  resultados e SQL compilado como artefato `dbt-artifacts` por 14 dias.
 - Secret Manager permanece disponível para um segredo real caso surja
   essa necessidade. ADC/WIF evitam criar segredo estático para a
   autenticação normal do MVP; não criar segredo de demonstração fictício.
@@ -213,9 +214,8 @@ execuções locais e habilitado no workflow de build.
 Terraform aplicou `roles/logging.logWriter` para as contas de serviço do
 pipeline e do dbt, uma política de alerta por log com eventos
 `status=failure` e um canal de e-mail. A API do Monitoring confirmou um
-incidente `OPEN` após os eventos sintéticos. O canal está habilitado; a API
-não informa status de verificação e não foi possível confirmar a entrega
-na caixa postal.
+incidente `OPEN` após os eventos sintéticos. O canal está habilitado; a
+pessoa responsável confirmou o recebimento do e-mail em 2026-11-20.
 
 ## Fora do MVP
 

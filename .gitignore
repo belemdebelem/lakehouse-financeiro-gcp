@@ -54,6 +54,9 @@ data/generated/
 
 # OS/IDE
 prints slide/
+docs/screenshots/email.png
+docs/screenshots/politica.png
+docs/screenshots/select no BQ studio.png
 .DS_Store
 .idea/
 .vscode/

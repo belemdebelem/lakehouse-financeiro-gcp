@@ -1,4 +1,4 @@
-# Setup e execução local (Fases 1 a 9 em andamento)
+# Setup e execução local (Fases 1 a 10 concluídas)
 
 ## Pré-requisitos
 
@@ -207,7 +207,8 @@ Os workflows ficam em `.github/workflows/`:
   só roda em `main` e exige o environment `demo` com revisores.
 - `dbt-build.yml`: `workflow_dispatch` com `ingestion_date`, environment
   `demo`, ingestão/carga com a SA do pipeline, dbt/qualidade com a SA do
-  dbt e upload dos artefatos em `dbt/target/`.
+  dbt e upload de `index.html`, `catalog.json`, manifest, resultados e SQL
+  compilado como artefato `dbt-artifacts` por 14 dias.
 
 Configure como variáveis do repositório: `GCP_PROJECT_ID`, `GCP_REGION`,
 `GCS_BUCKET_NAME`, `BQ_DATASET_BRONZE`, `BQ_DATASET_SILVER`,
@@ -238,8 +239,8 @@ Terraform aplica uma política que abre incidente no Cloud Monitoring para
 eventos `jsonPayload.status="failure"` e associa o canal de e-mail fornecido
 por `TF_VAR_alert_email` (não versione esse valor). Em 2026-11-20, a API do
 Monitoring confirmou um incidente `OPEN` após eventos sintéticos e o canal
-apareceu habilitado. A API não informa status de verificação; a entrega na
-caixa postal não foi confirmada.
+apareceu habilitado. Em 2026-11-20, a pessoa responsável confirmou o
+recebimento do e-mail de alerta.
 
 Cloud Logging inclui 50 GiB por projeto/mês; armazenamento acima desse
 volume é tarifado. O volume deste MVP é baixo, mas a franquia é compartilhada
@@ -275,6 +276,19 @@ de planejar mudanças. `apply` e `destroy` só com aprovação explícita. O
 orçamento e os alertas de faturamento são configurados manualmente; veja
 `infrastructure/terraform/README.md`.
 
+## Encerramento e limpeza
+
+Para revisar mudanças de infraestrutura, use o workflow `CD - Terraform`
+com `action=plan`. O `apply` exige aprovação no environment `demo`. Para
+encerrar a demonstração, remova recursos somente após revisar o plano de
+destruição e obter autorização explícita; a configuração permite apagar
+objetos e dados dos datasets. Consulte os passos e impactos em
+[`infrastructure/terraform/README.md`](../../infrastructure/terraform/README.md#limpeza-e-custo).
+
+Os artefatos dbt ficam anexados à execução do workflow `DBT - Build
+controlado` por 14 dias. Na página da execução, baixe `dbt-artifacts` e abra
+`index.html` localmente para consultar catálogo e lineage.
+
 ## Observações
 
 - Fase 1 concluída: instalação travada por `uv.lock`, testes de
@@ -295,3 +309,8 @@ orçamento e os alertas de faturamento são configurados manualmente; veja
 - Fase 8 concluída: SQLFluff, pre-commit, Gitleaks, Checkov, workflows com
   WIF e backend GCS aplicados; state migrado, variáveis do GitHub e revisores
   do environment `demo` configurados. O CI/CD foi validado.
+- Fase 9 concluída: logs estruturados, alerta por log e canal de e-mail
+  aplicados; incidente e recebimento da notificação sintética confirmados.
+- Fase 10 concluída: README público, especificação, diagrama, métricas
+  observadas, roteiro de palestra e artefatos dbt de curta retenção
+  documentados.
